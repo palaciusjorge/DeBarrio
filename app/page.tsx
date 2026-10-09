@@ -1,68 +1,126 @@
-import Image from "next/image";
+import {
+  Home,
+  Map,
+  Settings,
+  Search,
+  Utensils,
+  ShoppingBasket,
+  Shirt,
+  HeartPulse,
+  House,
+  Wrench,
+  Gamepad2,
+  Laptop,
+} from "lucide-react";
 
-export default function Home() {
+const categories = [
+  { name: "Restauración", icon: Utensils },
+  { name: "Alimentación", icon: ShoppingBasket },
+  { name: "Moda", icon: Shirt },
+  { name: "Salud y bienestar", icon: HeartPulse },
+  { name: "Hogar", icon: House },
+  { name: "Servicios", icon: Wrench },
+  { name: "Ocio", icon: Gamepad2 },
+  { name: "Tecnología", icon: Laptop },
+];
+
+export default function HomePage() {
   return (
-    <div className="flex flex-col flex-1 items-center justify-center bg-zinc-50 font-sans dark:bg-black">
-      <main className="flex flex-1 w-full max-w-3xl flex-col items-center justify-between py-32 px-16 bg-white dark:bg-black sm:items-start">
-        <Image
-          className="dark:invert h-5 w-[100px]"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={100}
-          height={20}
-          priority
-        />
-        <div className="flex flex-col items-center gap-6 text-center sm:items-start sm:text-left">
-          <h1 className="max-w-xs text-3xl font-semibold leading-10 tracking-tight text-black dark:text-zinc-50">
-            To get started, edit the{" "}
-            <code className="rounded bg-black/[.06] px-1.5 py-0.5 font-mono text-[0.9em] dark:bg-white/[.08]">
-              page.tsx
-            </code>{" "}
-            file.
-          </h1>
-          <p className="max-w-md text-lg leading-8 text-zinc-600 dark:text-zinc-400">
-            Looking for a starting point or more instructions? Head over to{" "}
-            <a
-              href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Templates
-            </a>{" "}
-            or the{" "}
-            <a
-              href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Learning
-            </a>{" "}
-            center.
+    <div className="min-h-screen bg-zinc-50 text-zinc-900">
+      <main className="mx-auto flex min-h-screen w-full max-w-md flex-col bg-white">
+        {/* Header */}
+        <header className="px-5 pb-4 pt-8">
+          <h1 className="text-3xl font-bold tracking-tight">DeBarrio</h1>
+          <p className="mt-1 text-sm text-zinc-500">
+            Descubre los comercios de tu zona
           </p>
-        </div>
-        <div className="flex flex-col gap-4 text-base font-medium sm:flex-row">
-          <a
-            className="flex h-12 w-full items-center justify-center gap-2 rounded-full bg-foreground px-5 text-background transition-colors hover:bg-[#383838] dark:hover:bg-[#ccc] md:w-[158px]"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert h-[14px] w-4"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={16}
-              height={14}
+        </header>
+
+        {/* Search */}
+        <section className="px-5">
+          <div className="flex items-center gap-3 rounded-2xl bg-zinc-100 px-4 py-3">
+            <Search className="h-5 w-5 text-zinc-400" />
+
+            <input
+              type="text"
+              placeholder="Buscar comercios..."
+              className="w-full bg-transparent text-sm outline-none placeholder:text-zinc-400"
             />
-            Deploy Now
-          </a>
-          <a
-            className="flex h-12 w-full items-center justify-center rounded-full border border-solid border-black/[.08] px-5 transition-colors hover:border-transparent hover:bg-black/[.04] dark:border-white/[.145] dark:hover:bg-[#1a1a1a] md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Documentation
-          </a>
-        </div>
+          </div>
+        </section>
+
+        {/* Categories */}
+        <section className="mt-8 px-5">
+          <div className="flex items-center justify-between">
+            <h2 className="text-lg font-semibold">Categorías</h2>
+
+            <button className="text-sm font-medium text-zinc-500">
+              Ver todas
+            </button>
+          </div>
+
+          <div className="mt-4 grid grid-cols-2 gap-3">
+            {categories.map((category) => {
+              const Icon = category.icon;
+
+              return (
+                <button
+                  key={category.name}
+                  className="flex min-h-24 flex-col items-center justify-center gap-2 rounded-2xl border border-zinc-200 bg-white p-3 text-center transition hover:bg-zinc-50 active:scale-[0.98]"
+                >
+                  <Icon className="h-6 w-6 text-zinc-700" />
+
+                  <span className="text-sm font-medium">
+                    {category.name}
+                  </span>
+                </button>
+              );
+            })}
+          </div>
+        </section>
+
+        {/* Nearby businesses */}
+        <section className="mt-8 px-5 pb-28">
+          <div className="flex items-center justify-between">
+            <h2 className="text-lg font-semibold">Cerca de ti</h2>
+
+            <button className="text-sm font-medium text-zinc-500">
+              Ver todos
+            </button>
+          </div>
+
+          <div className="mt-4 rounded-2xl border border-dashed border-zinc-300 p-6 text-center">
+            <Map className="mx-auto h-8 w-8 text-zinc-400" />
+
+            <p className="mt-3 text-sm font-medium text-zinc-700">
+              Próximamente
+            </p>
+
+            <p className="mt-1 text-xs text-zinc-500">
+              Aquí aparecerán los comercios cercanos a tu ubicación.
+            </p>
+          </div>
+        </section>
+
+        {/* Bottom navigation */}
+        <nav className="fixed bottom-0 left-0 right-0 z-10 border-t border-zinc-200 bg-white">
+          <div className="mx-auto flex max-w-md items-center justify-around px-4 py-3">
+            <button className="flex flex-col items-center gap-1 text-zinc-900">
+              <Home className="h-5 w-5" />
+              <span className="text-xs font-medium">Inicio</span>
+            </button>
+
+            <button className="flex flex-col items-center gap-1 text-zinc-400">
+              <Map className="h-5 w-5" />
+              <span className="text-xs font-medium">Mapa</span>
+            </button>
+
+            <button className="flex flex-col items-center gap-1 text-zinc-400">
+              <Settings className="h-5 w-5" />
+              <span className="text-xs font-medium">Ajustes</span>
+            </button>
+          </div>
+        </nav>
       </main>
     </div>
   );
