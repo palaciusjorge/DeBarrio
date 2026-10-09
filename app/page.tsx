@@ -125,3 +125,4 @@ export default function HomePage() {
     </div>
   );
 }
+// ESTO ES UNA VERSIÓN PARA VERLO EN LA WEB ANTES DE HACER LA MIGRACIÓN A EXPO, NO ES LA VERSIÓN FINAL.
