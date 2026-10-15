@@ -1,12 +1,12 @@
 {
   "expo": {
-    "name": "debarrio-mobile",
-    "slug": "debarrio-mobile",
+    "name": "DeBarrio",
+    "slug": "debarrio",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
-    "scheme": "debarriomobile",
-    "userInterfaceStyle": "automatic",
+    "scheme": "debarrio",
+    "userInterfaceStyle": "light",
     "ios": {
       "icon": "./assets/expo.icon"
     },
