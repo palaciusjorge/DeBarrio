@@ -1,13 +1,16 @@
 
 import { useEffect, useState } from 'react';
 import {
+  Alert,
   ActivityIndicator,
   Image,
+  Pressable,
   ScrollView,
   StyleSheet,
   Text,
   View,
 } from 'react-native';
+import * as Linking from 'expo-linking';
 import { Stack, useLocalSearchParams } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { SymbolView } from 'expo-symbols';
@@ -253,6 +256,7 @@ export default function BusinessDetailScreen() {
                     }}
                     label="Teléfono"
                     value={business.phone}
+                    href={getPhoneUrl(business.phone)}
                   />
                 )}
                 {business.email && (
@@ -264,6 +268,7 @@ export default function BusinessDetailScreen() {
                     }}
                     label="Correo electrónico"
                     value={business.email}
+                    href={`mailto:${encodeURIComponent(business.email.trim())}`}
                   />
                 )}
                 {business.website && (
@@ -275,6 +280,7 @@ export default function BusinessDetailScreen() {
                     }}
                     label="Página web"
                     value={business.website}
+                    href={getWebsiteUrl(business.website)}
                   />
                 )}
               </View>
@@ -386,11 +392,20 @@ function InfoRow({
   symbol,
   label,
   value,
+  href,
 }: {
   symbol: SymbolViewProps['name'];
   label: string;
   value: string;
+  href?: string;
 }) {
+  const infoText = (
+    <View style={styles.infoText}>
+      <Text style={styles.infoLabel}>{label}</Text>
+      <Text style={[styles.infoValue, href && styles.infoLink]}>{value}</Text>
+    </View>
+  );
+
   return (
     <View style={styles.infoRow}>
       <SymbolView
@@ -398,12 +413,46 @@ function InfoRow({
         tintColor={colors.primary}
         size={21}
       />
-      <View style={styles.infoText}>
-        <Text style={styles.infoLabel}>{label}</Text>
-        <Text style={styles.infoValue}>{value}</Text>
-      </View>
+      {href ? (
+        <Pressable
+          accessibilityLabel={`${label}: ${value}`}
+          accessibilityRole="link"
+          onPress={() => void openContactLink(href)}
+          style={({ pressed }) => [
+            styles.infoText,
+            pressed && styles.linkPressed,
+          ]}
+        >
+          {infoText}
+        </Pressable>
+      ) : (
+        infoText
+      )}
     </View>
   );
+}
+
+async function openContactLink(url: string) {
+  try {
+    await Linking.openURL(url);
+  } catch {
+    Alert.alert(
+      'No se pudo abrir el enlace',
+      'No hay una aplicación disponible para abrir este enlace.',
+    );
+  }
+}
+
+function getWebsiteUrl(website: string) {
+  const url = website.trim();
+
+  return /^https?:\/\//i.test(url) ? url : `https://${url}`;
+}
+
+function getPhoneUrl(phone: string) {
+  const number = phone.trim().replace(/[^\d+]/g, '');
+
+  return number ? `tel:${number}` : undefined;
 }
 
 function formatOfferDate(date: string | null, fallback: string) {
@@ -511,6 +560,13 @@ const styles = StyleSheet.create({
     fontSize: 14,
     lineHeight: 20,
     marginTop: 3,
+  },
+  infoLink: {
+    color: colors.primary,
+    textDecorationLine: 'underline',
+  },
+  linkPressed: {
+    opacity: 0.6,
   },
   listCard: {
     backgroundColor: colors.surface,
