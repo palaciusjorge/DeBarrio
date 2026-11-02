@@ -167,7 +167,79 @@ EXECUTE FUNCTION public.prevent_user_role_change();
 
 
 -- =====================================================
--- 5. SEGURIDAD DE LA TABLA BUSINESSES
+-- 5. POLITICAS DE LECTURA PUBLICA
+-- El catalogo publico puede consultarse sin iniciar sesion.
+-- Las politicas de propietarios se mantienen por separado:
+-- en PostgreSQL las politicas permisivas se combinan con OR.
+-- =====================================================
+
+-- Las categorias forman parte del catalogo publico.
+DROP POLICY IF EXISTS "Anyone can read categories"
+ON public.categories;
+
+CREATE POLICY "Anyone can read categories"
+ON public.categories
+FOR SELECT
+TO anon, authenticated
+USING (true);
+
+
+-- Los negocios registrados son visibles en el catalogo publico.
+DROP POLICY IF EXISTS "Anyone can read businesses"
+ON public.businesses;
+
+CREATE POLICY "Anyone can read businesses"
+ON public.businesses
+FOR SELECT
+TO anon, authenticated
+USING (true);
+
+
+-- Las asociaciones negocio-categoria son necesarias
+-- para mostrar y filtrar los negocios por categoria.
+DROP POLICY IF EXISTS "Anyone can read business categories"
+ON public.business_categories;
+
+CREATE POLICY "Anyone can read business categories"
+ON public.business_categories
+FOR SELECT
+TO anon, authenticated
+USING (true);
+
+
+-- El publico solo puede consultar productos activos.
+-- El propietario conserva la lectura de todos sus productos
+-- mediante la politica "Owners can read own products".
+DROP POLICY IF EXISTS "Anyone can read active products"
+ON public.products;
+
+CREATE POLICY "Anyone can read active products"
+ON public.products
+FOR SELECT
+TO anon, authenticated
+USING (active = true);
+
+
+-- El publico solo puede consultar ofertas activas y vigentes.
+-- Las fechas nulas se interpretan como ausencia de limite.
+-- El propietario conserva la lectura de todas sus ofertas
+-- mediante la politica "Owners can read own offers".
+DROP POLICY IF EXISTS "Anyone can read current offers"
+ON public.offers;
+
+CREATE POLICY "Anyone can read current offers"
+ON public.offers
+FOR SELECT
+TO anon, authenticated
+USING (
+    active = true
+    AND (start_date IS NULL OR start_date <= CURRENT_DATE)
+    AND (end_date IS NULL OR end_date >= CURRENT_DATE)
+);
+
+
+-- =====================================================
+-- 6. SEGURIDAD DE LA TABLA BUSINESSES
 -- Solo los propietarios con rol 'business'
 -- pueden registrar negocios.
 -- =====================================================
