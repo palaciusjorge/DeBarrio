@@ -1,79 +1,120 @@
 # Supabase – Base de datos de DeBarrio
 
-Esta carpeta contiene los scripts SQL necesarios para configurar e inicializar la base de datos de **DeBarrio**, una aplicación móvil desarrollada con Expo y React Native que permite descubrir negocios locales, consultar sus productos y ofertas, y facilitar la conexión entre usuarios y comercios de proximidad.
+Esta carpeta contiene los scripts SQL para configurar la base de datos de **DeBarrio**, una aplicación móvil desarrollada con Expo y React Native para descubrir negocios locales, consultar sus productos y ofertas y conectar usuarios con comercios de proximidad.
 
-La base de datos utiliza **PostgreSQL**, gestionado a través de **Supabase**, que también proporciona los servicios de autenticación.
+La base de datos utiliza **PostgreSQL** y **Supabase Auth** para la autenticación.
 
 ## Estructura de archivos
 
 | Archivo | Descripción |
 |---|---|
-| `001_initial_schema.sql` | Crea las tablas, relaciones, restricciones e índices de la base de datos. |
-| `002_seed_data.sql` | Inserta los datos iniciales necesarios, principalmente las categorías de negocios. |
-| `003_rls_policies.sql` | Configura la seguridad mediante Row Level Security (RLS), permisos, políticas de acceso y triggers. |
+| `001_initial_schema.sql` | Crea las seis tablas, relaciones, restricciones e índices. |
+| `002_seed_data.sql` | Inserta las ocho categorías iniciales. |
+| `003_rls_policies.sql` | Configura permisos SQL, políticas Row Level Security (RLS) y triggers de seguridad. |
 
 ## Requisitos previos
 
-Antes de ejecutar los scripts es necesario disponer de:
-
-- Un proyecto creado en Supabase.
+- Proyecto creado en Supabase.
 - Supabase Auth habilitado.
-- Acceso al SQL Editor del proyecto.
+- Acceso al SQL Editor con permisos para crear tablas, funciones, triggers y políticas.
 
 ## Instalación desde cero
 
-Para reproducir la estructura de la base de datos en un proyecto Supabase nuevo, los archivos deben ejecutarse desde el **SQL Editor**, respetando el siguiente orden:
+En un proyecto Supabase nuevo, ejecutar los archivos desde el **SQL Editor**, en este orden:
 
-1. **`001_initial_schema.sql`**: crea las seis tablas principales, sus claves primarias y foráneas, restricciones e índices.
-2. **`002_seed_data.sql`**: introduce las ocho categorías iniciales de DeBarrio.
-3. **`003_rls_policies.sql`**: establece los permisos, políticas RLS y triggers necesarios para controlar el acceso a los datos.
+1. `001_initial_schema.sql`: crea las seis tablas principales, sus relaciones, restricciones e índices.
+2. `002_seed_data.sql`: inserta las ocho categorías iniciales.
+3. `003_rls_policies.sql`: activa RLS, concede los permisos mínimos necesarios y crea las políticas y triggers.
 
-Los scripts deben ejecutarse en este orden porque cada fase depende de los elementos creados en la anterior.
-
-> **Importante:** `001_initial_schema.sql` está diseñado para una base de datos nueva. No debe ejecutarse sobre una base de datos que ya tenga creadas estas tablas.
+> **Importante:** `001_initial_schema.sql` está diseñado para una base de datos nueva. No debe ejecutarse sobre una base de datos que ya tenga estas tablas. El script de políticas puede volver a ejecutarse para aplicar o actualizar las políticas definidas en él.
 
 ## Modelo de datos
 
-La base de datos está organizada en seis tablas principales:
+- **users:** perfil y rol de cada usuario, vinculado mediante UUID a Supabase Auth.
+- **categories:** categorías disponibles para clasificar negocios.
+- **businesses:** información de cada negocio y su propietario.
+- **business_categories:** relación muchos a muchos entre negocios y categorías.
+- **products:** productos asociados a cada negocio.
+- **offers:** ofertas y descuentos publicados por los negocios.
 
-- **users:** almacena los perfiles de usuario y su rol dentro de la aplicación. Los identificadores están vinculados a Supabase Auth.
-- **categories:** contiene las categorías disponibles para clasificar los negocios.
-- **businesses:** almacena la información de los negocios registrados y su propietario.
-- **business_categories:** establece la relación muchos a muchos entre negocios y categorías.
-- **products:** contiene los productos asociados a cada negocio.
-- **offers:** almacena las ofertas y descuentos publicados por los negocios.
+Las relaciones se implementan mediante claves foráneas y eliminaciones en cascada cuando corresponde.
 
-Las relaciones entre las tablas utilizan claves foráneas y eliminación en cascada (`ON DELETE CASCADE`) cuando corresponde.
+## Seguridad y control de acceso (RLS)
 
-## Seguridad y control de acceso
+RLS está habilitado en las seis tablas. Los permisos SQL (`GRANT`) determinan qué operaciones puede solicitar cada rol de Supabase; las políticas RLS determinan sobre qué filas se permiten esas operaciones. Ambas capas son necesarias.
 
-La seguridad de la base de datos se configura mediante **Row Level Security (RLS)**.
+### Lectura pública
 
-El archivo `003_rls_policies.sql` establece las reglas de acceso para los distintos tipos de usuarios:
+Los roles `anon` y `authenticated` pueden consultar:
 
-- Los usuarios pueden consultar su propio perfil y actualizar sus datos, sin modificar su rol desde la aplicación.
-- Los negocios registrados pueden gestionar sus propios establecimientos.
-- Los propietarios pueden crear, modificar y eliminar los productos y ofertas asociados a sus negocios.
-- Los usuarios pueden consultar las categorías, los negocios y los contenidos públicos permitidos.
-- Las operaciones sobre los datos privados quedan sujetas a las políticas de seguridad correspondientes.
+- Todas las categorías.
+- Todos los negocios registrados.
+- Las asociaciones entre negocios y categorías.
+- Solo los productos con `active = true`.
+- Solo las ofertas activas cuya fecha de inicio no haya llegado y cuya fecha de fin no haya pasado. Si una fecha es `NULL`, se interpreta como que no existe límite para ese extremo.
 
-Además, se incluye un trigger que crea automáticamente el perfil correspondiente en `public.users` cuando se registra un nuevo usuario mediante Supabase Auth.
+Esto permite mostrar el catálogo sin exigir una sesión. La política pública no permite consultar productos u ofertas inactivos.
+
+### Perfiles de usuario
+
+- Un usuario autenticado puede leer únicamente su propio perfil (`users.id = auth.uid()`).
+- Puede actualizar su propio perfil, pero no insertar perfiles directamente desde la aplicación.
+- Un trigger crea automáticamente el perfil en `public.users` al registrarse en Supabase Auth.
+- El rol inicial asignado por el trigger es `user`.
+- Un trigger impide que una sesión autenticada cambie el campo `role`. La promoción a rol `business` debe realizarse mediante un proceso administrativo o controlado, nunca confiando en un valor enviado libremente por el cliente.
+
+### Propiedad y gestión de negocios
+
+- Solo un usuario con rol `business` puede insertar un negocio y debe establecer `owner_id = auth.uid()`.
+- Un propietario puede actualizar o eliminar únicamente los negocios cuyo `owner_id` coincida con su UUID.
+- Los negocios se pueden leer públicamente; la lectura pública no concede permisos de modificación.
+
+### Productos, ofertas y categorías de negocio
+
+- Un propietario puede consultar todos los productos y ofertas de sus negocios, incluidos los inactivos o fuera de fecha.
+- Puede insertar, actualizar y eliminar productos y ofertas únicamente si pertenecen a uno de sus negocios.
+- Puede asignar o retirar categorías únicamente de sus propios negocios.
+- Los usuarios públicos solo ven los productos activos y las ofertas activas y vigentes, según las reglas indicadas anteriormente.
+
+Las políticas de lectura pública y las políticas de lectura del propietario son permisivas y se combinan mediante OR: el propietario conserva acceso a sus elementos inactivos sin hacerlos públicos. Las operaciones de escritura siguen sujetas a sus políticas de propiedad.
+
+## Matriz resumida de acceso
+
+| Tabla | Anónimo (`anon`) | Usuario autenticado (`authenticated`) |
+|---|---|---|
+| `users` | Sin acceso | Leer y actualizar solo su perfil |
+| `categories` | Leer todas | Leer todas |
+| `businesses` | Leer todos | Leer todos; gestionar solo los propios si tiene rol `business` |
+| `business_categories` | Leer todas | Leer todas; asignar/eliminar solo en negocios propios |
+| `products` | Leer activos | Leer activos y todos los propios; gestionar solo los propios |
+| `offers` | Leer activas y vigentes | Leer activas/vigentes y todas las propias; gestionar solo las propias |
+
+## Verificación recomendada
+
+Después de ejecutar `003_rls_policies.sql`, comprobar en Supabase:
+
+1. En **Authentication / Policies** o en el editor SQL, que RLS está habilitado en las seis tablas.
+2. Que existen las políticas de lectura pública para categorías, negocios, relaciones, productos activos y ofertas vigentes.
+3. Que existen las políticas de propiedad para perfiles, negocios, productos, ofertas y asociaciones de categorías.
+4. Probar las consultas desde una sesión sin autenticar y desde dos cuentas autenticadas distintas.
+5. Confirmar que una cuenta propietaria no puede modificar datos de un negocio que pertenece a la otra cuenta.
+
+La existencia de las políticas no sustituye estas pruebas funcionales con los roles reales de la aplicación.
 
 ## Datos de prueba
 
-Los datos utilizados durante el desarrollo y las pruebas funcionales, como negocios de ejemplo, productos y ofertas, se mantienen separados de los datos iniciales de instalación.
+Los negocios, productos y ofertas utilizados durante el desarrollo se mantienen separados de los datos iniciales de instalación, para evitar que información ficticia se confunda con datos reales.
 
-De esta forma, la instalación de DeBarrio no incorpora información ficticia que pueda confundirse con datos reales.
+## Mantenimiento
 
-## Notas de mantenimiento
-
-- Los scripts SQL deben mantenerse sincronizados con la estructura real de la base de datos.
-- Los cambios futuros en el modelo de datos deben documentarse mediante nuevas migraciones o scripts SQL numerados.
-- Las claves y credenciales de Supabase no deben incluirse en estos archivos ni publicarse en el repositorio.
-- Las políticas RLS deben revisarse cada vez que se incorporen nuevas funcionalidades o permisos.
+- Mantener estos scripts sincronizados con el esquema y las políticas desplegadas en Supabase.
+- Documentar cambios posteriores mediante nuevas migraciones o scripts SQL numerados.
+- No incluir credenciales privadas en el repositorio. La clave publicable de Supabase puede utilizarse en el cliente, siempre acompañada de políticas RLS correctas; la clave `service_role` nunca debe exponerse en la aplicación.
+- Revisar las políticas RLS al incorporar nuevas tablas, campos o funcionalidades.
+- Las columnas `updated_at` tienen valor inicial por defecto; si se necesita que se actualicen automáticamente en cada modificación, habrá que añadir triggers específicos o actualizar el campo desde la aplicación.
 
 ---
 
 **Proyecto:** DeBarrio  
 **Tecnologías:** Supabase, PostgreSQL y Supabase Auth  
-**Carpeta:** `supabase/`
+**Ubicación:** `debarrio-mobile/supabase/`
