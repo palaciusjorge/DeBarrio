@@ -379,7 +379,7 @@ export default function HomeScreen() {
                     onPress={() =>
                       router.push({
                         pathname: '/business/[id]',
-                        params: { id: business.id },
+                        params: { id: String(business.id) },
                       })
                     }
                     accessibilityRole="button"
