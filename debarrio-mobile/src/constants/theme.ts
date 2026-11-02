@@ -2,7 +2,7 @@ export const colors = {
   background: '#FAFAF9',
   border: '#E7E5E4',
   iconBackground: '#F0F3F0',
-  muted: '#A8A29E',
+  muted: '#78716C',
   primary: '#315C45',
   secondaryText: '#78716C',
   selected: '#F1F5F1',

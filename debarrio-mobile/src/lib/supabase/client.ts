@@ -14,7 +14,7 @@ if (!supabaseProjectUrl || !supabasePublishableKey) {
 }
 
 export const supabase = createClient(
-  new URL(supabaseProjectUrl).origin,
+  supabaseProjectUrl,
   supabasePublishableKey,
   {
     auth: {

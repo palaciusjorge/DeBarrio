@@ -1,17 +1,14 @@
-# DeBarrio para móvil
+# DeBarrio
 
-Aplicación nativa para iOS y Android creada con Expo y Expo Router. La web que
-vive en la raíz del repositorio sigue siendo una vista previa independiente.
+Aplicación para iOS y Android creada con Expo y Expo Router.
 
 ## Empezar
 
 Configura las variables de Supabase antes de iniciar la app. Copia los valores
-de `NEXT_PUBLIC_SUPABASE_URL` y `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` del
-`.env.local` de la raíz a `debarrio-mobile/.env.local`, con los nombres
-`EXPO_PUBLIC_SUPABASE_URL` y `EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY`. Puedes usar
-`.env.example` como plantilla. No uses una `service_role` key en la app móvil.
-El cliente utiliza el origen del proyecto, aunque la URL de origen incluya una
-ruta como `/rest/v1/`.
+de `EXPO_PUBLIC_SUPABASE_URL` y `EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY` en
+`debarrio-mobile/.env.local`. Puedes usar `.env.example` como plantilla. La URL
+debe ser la URL base del proyecto Supabase. No uses una `service_role` key en
+la app móvil.
 
 ```bash
 npm install
@@ -30,5 +27,4 @@ también se puede ejecutar la versión web con `w`.
 
 Las pantallas y la navegación están en `src/app`; los componentes compartidos
 están en `src/components`. El cliente de Supabase está en
-`src/lib/supabase/client.ts` y comparte el proyecto y el esquema existentes con
-la aplicación web.
+`src/lib/supabase/client.ts`.

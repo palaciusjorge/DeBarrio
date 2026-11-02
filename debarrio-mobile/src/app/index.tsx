@@ -1,5 +1,7 @@
-import { useState } from 'react';
+
+import { useEffect, useMemo, useState } from 'react';
 import {
+  ActivityIndicator,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -9,62 +11,215 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { SymbolView } from 'expo-symbols';
+import { router } from 'expo-router';
 
 import { colors } from '@/constants/theme';
+import { supabase } from '@/lib/supabase/client';
 
-const categories = [
-  {
-    name: 'Restauración',
-    symbol: { ios: 'fork.knife', android: 'restaurant', web: 'restaurant' },
+type Category = {
+  id: number;
+  name: string;
+  description: string | null;
+};
+
+type Business = {
+  id: number;
+  name: string;
+  description: string | null;
+  address: string | null;
+  city: string | null;
+  postal_code: string | null;
+  latitude: number | null;
+  longitude: number | null;
+};
+
+type BusinessCategory = {
+  business_id: number;
+  category_id: number;
+};
+
+const categorySymbols = {
+  Restauración: {
+    ios: 'fork.knife',
+    android: 'restaurant',
+    web: 'restaurant',
   },
-  {
-    name: 'Alimentación',
-    symbol: { ios: 'basket.fill', android: 'shopping_basket', web: 'shopping_basket' },
+  Alimentación: {
+    ios: 'basket.fill',
+    android: 'shopping_basket',
+    web: 'shopping_basket',
   },
-  {
-    name: 'Moda',
-    symbol: { ios: 'tshirt.fill', android: 'checkroom', web: 'checkroom' },
+  Moda: {
+    ios: 'tshirt.fill',
+    android: 'checkroom',
+    web: 'checkroom',
   },
-  {
-    name: 'Salud y bienestar',
-    symbol: { ios: 'heart.fill', android: 'favorite', web: 'favorite' },
+  'Salud y bienestar': {
+    ios: 'heart.fill',
+    android: 'favorite',
+    web: 'favorite',
   },
-  {
-    name: 'Hogar',
-    symbol: { ios: 'house.fill', android: 'home', web: 'home' },
+  Hogar: {
+    ios: 'house.fill',
+    android: 'home',
+    web: 'home',
   },
-  {
-    name: 'Servicios',
-    symbol: { ios: 'wrench.fill', android: 'build', web: 'build' },
+  Servicios: {
+    ios: 'wrench.fill',
+    android: 'build',
+    web: 'build',
   },
-  {
-    name: 'Ocio',
-    symbol: { ios: 'gamecontroller.fill', android: 'sports_esports', web: 'sports_esports' },
+  Ocio: {
+    ios: 'gamecontroller.fill',
+    android: 'sports_esports',
+    web: 'sports_esports',
   },
-  {
-    name: 'Tecnología',
-    symbol: { ios: 'laptopcomputer', android: 'devices', web: 'devices' },
+  Tecnología: {
+    ios: 'laptopcomputer',
+    android: 'devices',
+    web: 'devices',
   },
-] as const;
+} as const;
+
+const fallbackSymbol = {
+  ios: 'tag.fill',
+  android: 'label',
+  web: 'label',
+} as const;
+
+function getCategorySymbol(name: string) {
+  return (
+    categorySymbols[name as keyof typeof categorySymbols] ??
+    fallbackSymbol
+  );
+}
+
+function normalize(value: string) {
+  return value
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase()
+    .trim();
+}
 
 export default function HomeScreen() {
   const [search, setSearch] = useState('');
-  const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
+  const [selectedCategory, setSelectedCategory] = useState<number | null>(
+    null,
+  );
+
+  const [categories, setCategories] = useState<Category[]>([]);
+  const [businesses, setBusinesses] = useState<Business[]>([]);
+  const [businessCategories, setBusinessCategories] = useState<
+    BusinessCategory[]
+  >([]);
+
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    let active = true;
+
+    async function loadData() {
+      setLoading(true);
+      setError(null);
+
+      try {
+        const [categoriesResult, businessesResult, linksResult] =
+          await Promise.all([
+            supabase
+              .from('categories')
+              .select('id, name, description')
+              .order('name'),
+            supabase
+              .from('businesses')
+              .select(
+                'id, name, description, address, city, postal_code, latitude, longitude',
+              )
+              .order('name'),
+            supabase
+              .from('business_categories')
+              .select('business_id, category_id'),
+          ]);
+
+        if (categoriesResult.error) throw categoriesResult.error;
+        if (businessesResult.error) throw businessesResult.error;
+        if (linksResult.error) throw linksResult.error;
+
+        if (active) {
+          setCategories(categoriesResult.data ?? []);
+          setBusinesses(businessesResult.data ?? []);
+          setBusinessCategories(linksResult.data ?? []);
+        }
+      } catch (err) {
+        if (active) {
+          setError(
+            err instanceof Error
+              ? err.message
+              : 'No se han podido cargar los datos.',
+          );
+        }
+      } finally {
+        if (active) setLoading(false);
+      }
+    }
+
+    loadData();
+
+    return () => {
+      active = false;
+    };
+  }, []);
+
+  const filteredBusinesses = useMemo(() => {
+    const query = normalize(search);
+
+    return businesses.filter((business) => {
+      const matchesSearch =
+        !query ||
+        normalize(
+          [
+            business.name,
+            business.description ?? '',
+            business.address ?? '',
+            business.city ?? '',
+            business.postal_code ?? '',
+          ].join(' '),
+        ).includes(query);
+
+      const matchesCategory =
+        selectedCategory === null ||
+        businessCategories.some(
+          (link) =>
+            link.business_id === business.id &&
+            link.category_id === selectedCategory,
+        );
+
+      return matchesSearch && matchesCategory;
+    });
+  }, [businesses, businessCategories, search, selectedCategory]);
 
   return (
     <SafeAreaView edges={['top']} style={styles.safeArea}>
       <ScrollView contentContainerStyle={styles.content}>
         <View style={styles.header}>
           <Text style={styles.brand}>DeBarrio</Text>
-          <Text style={styles.subtitle}>Descubre los comercios de tu zona</Text>
+          <Text style={styles.subtitle}>
+            Descubre los comercios de tu zona
+          </Text>
         </View>
 
         <View style={styles.searchBox}>
           <SymbolView
-            name={{ ios: 'magnifyingglass', android: 'search', web: 'search' }}
+            name={{
+              ios: 'magnifyingglass',
+              android: 'search',
+              web: 'search',
+            }}
             tintColor={colors.muted}
             size={20}
           />
+
           <TextInput
             accessibilityLabel="Buscar comercios"
             placeholder="Buscar comercios..."
@@ -74,13 +229,19 @@ export default function HomeScreen() {
             value={search}
             onChangeText={setSearch}
           />
+
           {search.length > 0 && (
             <Pressable
               accessibilityLabel="Limpiar búsqueda"
               hitSlop={8}
-              onPress={() => setSearch('')}>
+              onPress={() => setSearch('')}
+            >
               <SymbolView
-                name={{ ios: 'xmark.circle.fill', android: 'cancel', web: 'cancel' }}
+                name={{
+                  ios: 'xmark.circle.fill',
+                  android: 'cancel',
+                  web: 'cancel',
+                }}
                 tintColor={colors.muted}
                 size={18}
               />
@@ -91,71 +252,198 @@ export default function HomeScreen() {
         <View style={styles.section}>
           <View style={styles.sectionHeading}>
             <Text style={styles.sectionTitle}>Categorías</Text>
-            {selectedCategory && (
+
+            {selectedCategory !== null && (
               <Pressable
                 accessibilityRole="button"
-                onPress={() => setSelectedCategory(null)}>
+                onPress={() => setSelectedCategory(null)}
+              >
                 <Text style={styles.clearSelection}>Quitar filtro</Text>
               </Pressable>
             )}
           </View>
-          <View style={styles.categoriesGrid}>
-            {categories.map((category) => {
-              const isSelected = selectedCategory === category.name;
 
-              return (
-                <Pressable
-                  accessibilityRole="button"
-                  accessibilityState={{ selected: isSelected }}
-                  key={category.name}
-                  onPress={() =>
-                    setSelectedCategory(isSelected ? null : category.name)
-                  }
-                  style={({ pressed }) => [
-                    styles.categoryCard,
-                    isSelected && styles.categoryCardSelected,
-                    pressed && styles.pressed,
-                  ]}>
-                  <View
-                    style={[
-                      styles.categoryIcon,
-                      isSelected && styles.categoryIconSelected,
-                    ]}>
-                    <SymbolView
-                      name={category.symbol}
-                      tintColor={isSelected ? colors.surface : colors.primary}
-                      size={22}
-                    />
-                  </View>
-                  <Text
-                    numberOfLines={2}
-                    style={[
-                      styles.categoryName,
-                      isSelected && styles.categoryNameSelected,
-                    ]}>
-                    {category.name}
-                  </Text>
-                </Pressable>
-              );
-            })}
-          </View>
+          {loading && categories.length === 0 ? (
+            <ActivityIndicator color={colors.primary} />
+          ) : (
+            <View style={styles.categoriesGrid}>
+              {categories.map((category) => {
+                const isSelected = selectedCategory === category.id;
+
+                return (
+                  <Pressable
+                    accessibilityRole="button"
+                    accessibilityState={{ selected: isSelected }}
+                    key={category.id}
+                    onPress={() =>
+                      setSelectedCategory(
+                        isSelected ? null : category.id,
+                      )
+                    }
+                    style={({ pressed }) => [
+                      styles.categoryCard,
+                      isSelected && styles.categoryCardSelected,
+                      pressed && styles.pressed,
+                    ]}
+                  >
+                    <View
+                      style={[
+                        styles.categoryIcon,
+                        isSelected && styles.categoryIconSelected,
+                      ]}
+                    >
+                      <SymbolView
+                        name={getCategorySymbol(category.name)}
+                        tintColor={
+                          isSelected ? colors.surface : colors.primary
+                        }
+                        size={22}
+                      />
+                    </View>
+
+                    <Text
+                      numberOfLines={2}
+                      style={[
+                        styles.categoryName,
+                        isSelected && styles.categoryNameSelected,
+                      ]}
+                    >
+                      {category.name}
+                    </Text>
+                  </Pressable>
+                );
+              })}
+            </View>
+          )}
         </View>
 
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Cerca de ti</Text>
-          <View style={styles.emptyState}>
-            <View style={styles.emptyIcon}>
-              <SymbolView
-                name={{ ios: 'map.fill', android: 'map', web: 'map' }}
-                tintColor={colors.primary}
-                size={26}
-              />
+
+          {loading ? (
+            <View style={styles.messageState}>
+              <ActivityIndicator color={colors.primary} />
+              <Text style={styles.emptyDescription}>
+                Cargando comercios...
+              </Text>
             </View>
-            <Text style={styles.emptyTitle}>Muy pronto en tu barrio</Text>
-            <Text style={styles.emptyDescription}>
-              Aquí encontrarás comercios locales cerca de ti.
-            </Text>
-          </View>
+          ) : error ? (
+            <View style={styles.messageState}>
+              <Text style={styles.emptyTitle}>
+                No se han podido cargar los datos
+              </Text>
+              <Text style={styles.emptyDescription}>{error}</Text>
+            </View>
+          ) : filteredBusinesses.length === 0 ? (
+            <View style={styles.emptyState}>
+              <View style={styles.emptyIcon}>
+                <SymbolView
+                  name={{
+                    ios: 'map.fill',
+                    android: 'map',
+                    web: 'map',
+                  }}
+                  tintColor={colors.primary}
+                  size={26}
+                />
+              </View>
+
+              <Text style={styles.emptyTitle}>
+                {businesses.length === 0
+                  ? 'Todavía no hay comercios'
+                  : 'No hay resultados'}
+              </Text>
+
+              <Text style={styles.emptyDescription}>
+                {businesses.length === 0
+                  ? 'Pronto podrás descubrir comercios de tu barrio.'
+                  : 'Prueba con otra búsqueda o selecciona otra categoría.'}
+              </Text>
+            </View>
+          ) : (
+            <View style={styles.businessList}>
+              {filteredBusinesses.map((business) => {
+                const businessCategoryNames = businessCategories
+                  .filter((link) => link.business_id === business.id)
+                  .map(
+                    (link) =>
+                      categories.find(
+                        (category) => category.id === link.category_id,
+                      )?.name,
+                  )
+                  .filter((name): name is string => Boolean(name));
+
+                return (
+                  <Pressable
+                    key={business.id}
+                    onPress={() =>
+                      router.push({
+                        pathname: '/business/[id]',
+                        params: { id: business.id },
+                      })
+                    }
+                    accessibilityRole="button"
+                    style={({ pressed }) => [
+                      styles.businessCard,
+                      pressed && styles.pressed,
+                    ]}
+                  >
+                    <View style={styles.businessIcon}>
+                      <SymbolView
+                        name={{
+                          ios: 'storefront.fill',
+                          android: 'storefront',
+                          web: 'storefront',
+                        }}
+                        tintColor={colors.primary}
+                        size={25}
+                      />
+                    </View>
+
+                    <View style={styles.businessInfo}>
+                      <Text style={styles.businessName}>
+                        {business.name}
+                      </Text>
+
+                      {(business.address || business.city) && (
+                        <Text style={styles.businessAddress}>
+                          {[business.address, business.city]
+                            .filter(Boolean)
+                            .join(', ')}
+                        </Text>
+                      )}
+
+                      {business.description ? (
+                        <Text style={styles.businessDescription}>
+                          {business.description}
+                        </Text>
+                      ) : null}
+
+                      {businessCategoryNames.length > 0 && (
+                        <View style={styles.categoryTags}>
+                          {businessCategoryNames.map((name) => (
+                            <Text key={name} style={styles.categoryTag}>
+                              {name}
+                            </Text>
+                          ))}
+                        </View>
+                      )}
+                    </View>
+
+                    <SymbolView
+                      name={{
+                        ios: 'chevron.right',
+                        android: 'chevron_right',
+                        web: 'chevron_right',
+                      }}
+                      tintColor={colors.muted}
+                      size={18}
+                    />
+                  </Pressable>
+                );
+              })}
+            </View>
+          )}
         </View>
       </ScrollView>
     </SafeAreaView>
@@ -275,6 +563,15 @@ const styles = StyleSheet.create({
     paddingHorizontal: 24,
     paddingVertical: 26,
   },
+  messageState: {
+    alignItems: 'center',
+    backgroundColor: colors.surface,
+    borderColor: colors.border,
+    borderRadius: 18,
+    borderWidth: 1,
+    padding: 24,
+    gap: 10,
+  },
   emptyIcon: {
     alignItems: 'center',
     backgroundColor: colors.iconBackground,
@@ -288,14 +585,72 @@ const styles = StyleSheet.create({
     color: colors.text,
     fontSize: 15,
     fontWeight: '700',
+    textAlign: 'center',
   },
   emptyDescription: {
     color: colors.secondaryText,
     fontSize: 13,
     lineHeight: 19,
     marginTop: 6,
-    maxWidth: 240,
+    maxWidth: 280,
     textAlign: 'center',
+  },
+  businessList: {
+    gap: 12,
+  },
+  businessCard: {
+    alignItems: 'flex-start',
+    backgroundColor: colors.surface,
+    borderColor: colors.border,
+    borderRadius: 18,
+    borderWidth: 1,
+    flexDirection: 'row',
+    gap: 14,
+    padding: 16,
+  },
+  businessIcon: {
+    alignItems: 'center',
+    backgroundColor: colors.iconBackground,
+    borderRadius: 14,
+    height: 48,
+    justifyContent: 'center',
+    width: 48,
+  },
+  businessInfo: {
+    flex: 1,
+  },
+  businessName: {
+    color: colors.text,
+    fontSize: 16,
+    fontWeight: '700',
+  },
+  businessAddress: {
+    color: colors.secondaryText,
+    fontSize: 13,
+    lineHeight: 19,
+    marginTop: 4,
+  },
+  businessDescription: {
+    color: colors.secondaryText,
+    fontSize: 13,
+    lineHeight: 19,
+    marginTop: 8,
+  },
+  categoryTags: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 6,
+    marginTop: 10,
+  },
+  categoryTag: {
+    backgroundColor: colors.surfaceMuted,
+    borderRadius: 8,
+    color: colors.primary,
+    fontSize: 11,
+    fontWeight: '600',
+    overflow: 'hidden',
+    paddingHorizontal: 8,
+    paddingVertical: 5,
   },
   pressed: {
     opacity: 0.78,

@@ -13,9 +13,8 @@
 # testing
 /coverage
 
-# next.js
+# local build artifacts
 /.next/
-/out/
 
 # production
 /build
@@ -33,9 +32,6 @@ yarn-error.log*
 # env files (can opt-in for committing if needed)
 .env*
 !debarrio-mobile/.env.example
-
-# vercel
-.vercel
 
 # typescript
 *.tsbuildinfo

@@ -2,11 +2,14 @@ import { useEffect } from 'react';
 import { SymbolView } from 'expo-symbols';
 import { Tabs } from 'expo-router';
 import { AppState, Platform } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { colors } from '@/constants/theme';
 import { supabase } from '@/lib/supabase/client';
 
 export default function RootLayout() {
+  const insets = useSafeAreaInsets();
+
   useEffect(() => {
     if (Platform.OS === 'web') {
       return;
@@ -40,7 +43,7 @@ export default function RootLayout() {
         tabBarStyle: {
           backgroundColor: colors.surface,
           borderTopColor: colors.border,
-          height: 64,
+          height: 64 + insets.bottom,
           paddingTop: 7,
         },
       }}>
