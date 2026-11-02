@@ -2,6 +2,7 @@
 import { useEffect, useState } from 'react';
 import {
   ActivityIndicator,
+  Image,
   ScrollView,
   StyleSheet,
   Text,
@@ -20,6 +21,9 @@ type Business = {
   name: string;
   description: string | null;
   address: string | null;
+  phone: string | null;
+  email: string | null;
+  website: string | null;
   city: string | null;
   postal_code: string | null;
   latitude: number | null;
@@ -35,7 +39,8 @@ type Product = {
   id: number;
   name: string;
   description: string | null;
-  price: number;
+  price: number | null;
+  image_url: string | null;
 };
 
 type Offer = {
@@ -74,7 +79,7 @@ export default function BusinessDetailScreen() {
         const businessResult = await supabase
           .from('businesses')
           .select(
-            'id, name, description, address, city, postal_code, latitude, longitude',
+            'id, name, description, address, phone, email, website, city, postal_code, latitude, longitude',
           )
           .eq('id', businessId)
           .maybeSingle();
@@ -93,14 +98,16 @@ export default function BusinessDetailScreen() {
               .eq('business_id', businessId),
             supabase
               .from('products')
-              .select('id, name, description, price')
-              .eq('business_id', businessId),
+              .select('id, name, description, price, image_url')
+              .eq('business_id', businessId)
+              .eq('active', true),
             supabase
               .from('offers')
               .select(
                 'id, title, description, discount_percentage, start_date, end_date',
               )
-              .eq('business_id', businessId),
+              .eq('business_id', businessId)
+              .eq('active', true),
           ]);
 
         if (linksResult.error) throw linksResult.error;
@@ -237,6 +244,39 @@ export default function BusinessDetailScreen() {
                       .join(', ') || 'Dirección no disponible'
                   }
                 />
+                {business.phone && (
+                  <InfoRow
+                    symbol={{
+                      ios: 'phone.fill',
+                      android: 'call',
+                      web: 'call',
+                    }}
+                    label="Teléfono"
+                    value={business.phone}
+                  />
+                )}
+                {business.email && (
+                  <InfoRow
+                    symbol={{
+                      ios: 'envelope.fill',
+                      android: 'email',
+                      web: 'email',
+                    }}
+                    label="Correo electrónico"
+                    value={business.email}
+                  />
+                )}
+                {business.website && (
+                  <InfoRow
+                    symbol={{
+                      ios: 'globe',
+                      android: 'language',
+                      web: 'language',
+                    }}
+                    label="Página web"
+                    value={business.website}
+                  />
+                )}
               </View>
             </View>
 
@@ -251,6 +291,13 @@ export default function BusinessDetailScreen() {
                 <View style={styles.listCard}>
                   {products.map((product) => (
                     <View key={product.id} style={styles.productRow}>
+                      {product.image_url ? (
+                        <Image
+                          accessibilityLabel={product.name}
+                          source={{ uri: product.image_url }}
+                          style={styles.productImage}
+                        />
+                      ) : null}
                       <View style={styles.productInfo}>
                         <Text style={styles.productName}>
                           {product.name}
@@ -262,10 +309,12 @@ export default function BusinessDetailScreen() {
                         ) : null}
                       </View>
                       <Text style={styles.price}>
-                        {Number(product.price).toLocaleString('es-ES', {
-                          style: 'currency',
-                          currency: 'EUR',
-                        })}
+                        {product.price == null
+                          ? 'Consultar precio'
+                          : Number(product.price).toLocaleString('es-ES', {
+                              style: 'currency',
+                              currency: 'EUR',
+                            })}
                       </Text>
                     </View>
                   ))}
@@ -444,8 +493,11 @@ const styles = StyleSheet.create({
   },
   infoRow: {
     alignItems: 'flex-start',
+    borderBottomColor: colors.border,
+    borderBottomWidth: StyleSheet.hairlineWidth,
     flexDirection: 'row',
     gap: 12,
+    paddingVertical: 12,
   },
   infoText: {
     flex: 1,
@@ -474,6 +526,11 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     gap: 12,
     paddingVertical: 16,
+  },
+  productImage: {
+    borderRadius: 10,
+    height: 72,
+    width: 72,
   },
   productInfo: {
     flex: 1,
