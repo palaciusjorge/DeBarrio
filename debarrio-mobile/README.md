@@ -23,12 +23,13 @@ también se puede ejecutar la versión web con `w`.
 En iOS y Android, la pestaña Mapa solicita permiso de ubicación en primer
 plano, centra el mapa en la posición actual y muestra los comercios con
 coordenadas válidas. Si se deniega el permiso, se centra en los comercios
-disponibles. En web se muestra la lista de comercios en lugar del mapa nativo.
+disponibles. Android usa OpenStreetMap; iOS usa Apple Maps. En web se muestra
+la lista de comercios en lugar del mapa interactivo.
 
-Expo Go no requiere configuración adicional. Para distribuir una build de
-Android, configura una clave de Google Maps en
-`android.config.googleMaps.apiKey` y restringe su uso a la aplicación. iOS usa
-Apple Maps sin configuración adicional.
+No se necesita una clave de Google Maps. El mapa de Android carga Leaflet y
+los mosaicos públicos de OpenStreetMap, por lo que requiere conexión a
+internet y muestra su atribución. Respeta la
+[política de uso de mosaicos de OpenStreetMap](https://operations.osmfoundation.org/policies/tiles/).
 
 ## Scripts
 
