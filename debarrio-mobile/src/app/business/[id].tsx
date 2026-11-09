@@ -11,7 +11,7 @@ import {
   View,
 } from 'react-native';
 import * as Linking from 'expo-linking';
-import { Stack, useLocalSearchParams } from 'expo-router';
+import { router, Stack, useLocalSearchParams } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { SymbolView } from 'expo-symbols';
 import type { SymbolViewProps } from 'expo-symbols';
@@ -174,7 +174,41 @@ export default function BusinessDetailScreen() {
 
   return (
     <SafeAreaView edges={['bottom']} style={styles.safeArea}>
-      <Stack.Screen options={{ title: 'Comercio', headerShown: true }} />
+      <Stack.Screen
+        options={{
+          headerBackVisible: false,
+          headerLeft: () => (
+            <Pressable
+              accessibilityLabel="Volver a los comercios"
+              accessibilityRole="button"
+              onPress={() => {
+                if (router.canGoBack()) {
+                  router.back();
+                } else {
+                  router.replace('/(tabs)');
+                }
+              }}
+              style={styles.backButton}
+            >
+              <SymbolView
+                name={{
+                  ios: 'chevron.left',
+                  android: 'arrow_back',
+                  web: 'arrow_back',
+                }}
+                tintColor={colors.primary}
+                size={20}
+              />
+              <Text numberOfLines={1} style={styles.backButtonText}>
+                Volver a los comercios
+              </Text>
+            </Pressable>
+          ),
+          headerTransparent: false,
+          headerShown: true,
+          title: 'Comercio',
+        }}
+      />
 
       <ScrollView contentContainerStyle={styles.content}>
         {loading ? (
@@ -195,29 +229,33 @@ export default function BusinessDetailScreen() {
         ) : (
           <>
             <View style={styles.hero}>
-              <View style={styles.heroIcon}>
-                <SymbolView
-                  name={{
-                    ios: 'storefront.fill',
-                    android: 'storefront',
-                    web: 'storefront',
-                  }}
-                  tintColor={colors.primary}
-                  size={42}
-                />
-              </View>
-
-              <Text style={styles.businessName}>{business.name}</Text>
-
-              {categories.length > 0 && (
-                <View style={styles.tags}>
-                  {categories.map((category) => (
-                    <Text key={category.id} style={styles.tag}>
-                      {category.name}
-                    </Text>
-                  ))}
+              <View style={styles.heroHeading}>
+                <View style={styles.heroIcon}>
+                  <SymbolView
+                    name={{
+                      ios: 'storefront.fill',
+                      android: 'storefront',
+                      web: 'storefront',
+                    }}
+                    tintColor={colors.primary}
+                    size={34}
+                  />
                 </View>
-              )}
+
+                <View style={styles.heroDetails}>
+                  <Text style={styles.businessName}>{business.name}</Text>
+
+                  {categories.length > 0 && (
+                    <View style={styles.tags}>
+                      {categories.map((category) => (
+                        <Text key={category.id} style={styles.tag}>
+                          {category.name}
+                        </Text>
+                      ))}
+                    </View>
+                  )}
+                </View>
+              </View>
 
               {business.description ? (
                 <Text style={styles.description}>
@@ -466,46 +504,66 @@ function formatOfferDate(date: string | null, fallback: string) {
 }
 
 const styles = StyleSheet.create({
+  backButton: {
+    alignItems: 'center',
+    flexDirection: 'row',
+    gap: 4,
+    maxWidth: 188,
+    paddingVertical: 8,
+  },
+  backButtonText: {
+    color: colors.primary,
+    flexShrink: 1,
+    fontSize: 14,
+    fontWeight: '600',
+  },
   safeArea: {
     flex: 1,
     backgroundColor: colors.background,
   },
   content: {
-    padding: 20,
+    paddingHorizontal: 20,
+    paddingTop: 36,
     paddingBottom: 36,
   },
   loader: {
     marginTop: 60,
   },
   hero: {
-    alignItems: 'center',
     backgroundColor: colors.surface,
     borderColor: colors.border,
     borderRadius: 22,
     borderWidth: 1,
-    padding: 24,
+    padding: 20,
+  },
+  heroHeading: {
+    alignItems: 'center',
+    flexDirection: 'row',
+    gap: 14,
+  },
+  heroDetails: {
+    flex: 1,
+    gap: 10,
   },
   heroIcon: {
     alignItems: 'center',
     backgroundColor: colors.iconBackground,
-    borderRadius: 22,
-    height: 80,
+    borderRadius: 18,
+    height: 64,
     justifyContent: 'center',
-    marginBottom: 16,
-    width: 80,
+    width: 64,
   },
   businessName: {
     color: colors.text,
-    fontSize: 26,
+    fontSize: 22,
     fontWeight: '800',
-    textAlign: 'center',
+    flexShrink: 1,
   },
   tags: {
     flexDirection: 'row',
     flexWrap: 'wrap',
     gap: 8,
-    justifyContent: 'center',
-    marginTop: 12,
+    justifyContent: 'flex-start',
   },
   tag: {
     backgroundColor: colors.surfaceMuted,
@@ -522,7 +580,6 @@ const styles = StyleSheet.create({
     fontSize: 14,
     lineHeight: 21,
     marginTop: 16,
-    textAlign: 'center',
   },
   section: {
     marginTop: 28,
