@@ -41,3 +41,6 @@ internet y muestra su atribución. Respeta la
 Las pantallas y la navegación están en `src/app`; los componentes compartidos
 están en `src/components`. El cliente de Supabase está en
 `src/lib/supabase/client.ts`.
+
+Para el análisis del modelo de usuarios, la sesión y el flujo de registro,
+consulta el [estudio de implementación de autenticación](./ESTUDIO_IMPLEMENTACION_AUTENTICACION.md).

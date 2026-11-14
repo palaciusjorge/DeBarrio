@@ -1,7 +1,9 @@
+
 import { useEffect } from 'react';
 import { Stack } from 'expo-router';
 import { AppState, Platform } from 'react-native';
 
+import { AuthProvider } from '@/contexts/AuthContext';
 import { supabase } from '@/lib/supabase/client';
 
 export default function RootLayout() {
@@ -29,12 +31,15 @@ export default function RootLayout() {
   }, []);
 
   return (
-    <Stack screenOptions={{ headerShown: false }}>
-      <Stack.Screen name="(tabs)" />
-      <Stack.Screen
-        name="business/[id]"
-        options={{ headerShown: true, title: 'Comercio' }}
-      />
-    </Stack>
+    <AuthProvider>
+      <Stack screenOptions={{ headerShown: false }}>
+        <Stack.Screen name="(tabs)" />
+        <Stack.Screen
+          name="business/[id]"
+          options={{ headerShown: true, title: 'Comercio' }}
+        />
+      </Stack>
+    </AuthProvider>
   );
 }
+
