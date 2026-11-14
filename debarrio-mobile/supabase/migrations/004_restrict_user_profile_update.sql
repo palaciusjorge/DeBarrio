@@ -1,4 +1,4 @@
-﻿-- Restrict authenticated users to editable profile fields.
+-- Restrict authenticated users to editable profile fields.
 -- Users can update their own profile, but cannot change created_at.
 
 REVOKE UPDATE ON TABLE public.users FROM authenticated;
