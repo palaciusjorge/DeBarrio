@@ -99,6 +99,20 @@ Después de ejecutar `003_rls_policies.sql`, comprobar en Supabase:
 4. Probar las consultas desde una sesión sin autenticar y desde dos cuentas autenticadas distintas.
 5. Confirmar que una cuenta propietaria no puede modificar datos de un negocio que pertenece a la otra cuenta.
 
+### Confirmación de correo en la aplicación
+
+El registro de la app envía como URL de retorno `debarrio://auth/callback` en
+builds de desarrollo y producción. Añade esa dirección a la lista **Redirect
+URLs** de Authentication en el Dashboard de Supabase y confirma que la
+confirmación de correo está habilitada. Si se prueba desde Expo Go, la URL de
+retorno generada para esa sesión de desarrollo también debe estar permitida;
+puede cambiar entre sesiones.
+
+La pantalla `/auth/callback` intercambia el código o los tokens recibidos,
+activa la sesión y muestra el resultado. El trigger `on_auth_user_created`
+crea el perfil en `public.users` al insertar el registro en `auth.users`; la
+app no inserta una segunda fila.
+
 La existencia de las políticas no sustituye estas pruebas funcionales con los roles reales de la aplicación.
 
 ## Datos de prueba

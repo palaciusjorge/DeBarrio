@@ -107,6 +107,7 @@ export default function HomeScreen() {
   const [selectedCategory, setSelectedCategory] = useState<number | null>(
     null,
   );
+  const [categoriesExpanded, setCategoriesExpanded] = useState(false);
 
   const [categories, setCategories] = useState<Category[]>([]);
   const [businesses, setBusinesses] = useState<Business[]>([]);
@@ -250,8 +251,50 @@ export default function HomeScreen() {
         </View>
 
         <View style={styles.section}>
-          <View style={styles.sectionHeading}>
-            <Text style={styles.sectionTitle}>Categorías</Text>
+          <View
+            style={[
+              styles.sectionHeading,
+              categoriesExpanded && styles.sectionHeadingExpanded,
+            ]}
+          >
+            <Pressable
+              accessibilityRole="button"
+              accessibilityState={{ expanded: categoriesExpanded }}
+              onPress={() => setCategoriesExpanded((expanded) => !expanded)}
+              style={({ pressed }) => [
+                styles.categoryToggle,
+                pressed && styles.pressed,
+              ]}
+            >
+              <View style={styles.categoryToggleLabel}>
+                <Text style={styles.sectionTitle}>Categorías</Text>
+                {selectedCategory !== null && (
+                  <Text numberOfLines={1} style={styles.selectedCategoryLabel}>
+                    {categories.find(
+                      (category) => category.id === selectedCategory,
+                    )?.name}
+                  </Text>
+                )}
+              </View>
+
+              <SymbolView
+                name={
+                  categoriesExpanded
+                    ? {
+                        ios: 'chevron.down',
+                        android: 'keyboard_arrow_down',
+                        web: 'keyboard_arrow_down',
+                      }
+                    : {
+                        ios: 'chevron.right',
+                        android: 'chevron_right',
+                        web: 'chevron_right',
+                      }
+                }
+                tintColor={colors.muted}
+                size={20}
+              />
+            </Pressable>
 
             {selectedCategory !== null && (
               <Pressable
@@ -263,58 +306,59 @@ export default function HomeScreen() {
             )}
           </View>
 
-          {loading && categories.length === 0 ? (
-            <ActivityIndicator color={colors.primary} />
-          ) : (
-            <View style={styles.categoriesGrid}>
-              {categories.map((category) => {
-                const isSelected = selectedCategory === category.id;
+          {categoriesExpanded &&
+            (loading && categories.length === 0 ? (
+              <ActivityIndicator color={colors.primary} />
+            ) : (
+              <View style={styles.categoriesGrid}>
+                {categories.map((category) => {
+                  const isSelected = selectedCategory === category.id;
 
-                return (
-                  <Pressable
-                    accessibilityRole="button"
-                    accessibilityState={{ selected: isSelected }}
-                    key={category.id}
-                    onPress={() =>
-                      setSelectedCategory(
-                        isSelected ? null : category.id,
-                      )
-                    }
-                    style={({ pressed }) => [
-                      styles.categoryCard,
-                      isSelected && styles.categoryCardSelected,
-                      pressed && styles.pressed,
-                    ]}
-                  >
-                    <View
-                      style={[
-                        styles.categoryIcon,
-                        isSelected && styles.categoryIconSelected,
+                  return (
+                    <Pressable
+                      accessibilityRole="button"
+                      accessibilityState={{ selected: isSelected }}
+                      key={category.id}
+                      onPress={() =>
+                        setSelectedCategory(
+                          isSelected ? null : category.id,
+                        )
+                      }
+                      style={({ pressed }) => [
+                        styles.categoryCard,
+                        isSelected && styles.categoryCardSelected,
+                        pressed && styles.pressed,
                       ]}
                     >
-                      <SymbolView
-                        name={getCategorySymbol(category.name)}
-                        tintColor={
-                          isSelected ? colors.surface : colors.primary
-                        }
-                        size={22}
-                      />
-                    </View>
+                      <View
+                        style={[
+                          styles.categoryIcon,
+                          isSelected && styles.categoryIconSelected,
+                        ]}
+                      >
+                        <SymbolView
+                          name={getCategorySymbol(category.name)}
+                          tintColor={
+                            isSelected ? colors.surface : colors.primary
+                          }
+                          size={22}
+                        />
+                      </View>
 
-                    <Text
-                      numberOfLines={2}
-                      style={[
-                        styles.categoryName,
-                        isSelected && styles.categoryNameSelected,
-                      ]}
-                    >
-                      {category.name}
-                    </Text>
-                  </Pressable>
-                );
-              })}
-            </View>
-          )}
+                      <Text
+                        numberOfLines={2}
+                        style={[
+                          styles.categoryName,
+                          isSelected && styles.categoryNameSelected,
+                        ]}
+                      >
+                        {category.name}
+                      </Text>
+                    </Pressable>
+                  );
+                })}
+              </View>
+            ))}
         </View>
 
         <View style={styles.section}>
@@ -496,19 +540,39 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     flexDirection: 'row',
     justifyContent: 'space-between',
+  },
+  sectionHeadingExpanded: {
     marginBottom: 14,
+  },
+  categoryToggle: {
+    alignItems: 'center',
+    flex: 1,
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    minHeight: 44,
+    paddingRight: 12,
+  },
+  categoryToggleLabel: {
+    alignItems: 'center',
+    flexDirection: 'row',
+    flex: 1,
+    gap: 8,
   },
   sectionTitle: {
     color: colors.text,
     fontSize: 19,
     fontWeight: '700',
-    marginBottom: 14,
+  },
+  selectedCategoryLabel: {
+    color: colors.primary,
+    flexShrink: 1,
+    fontSize: 14,
+    fontWeight: '600',
   },
   clearSelection: {
     color: colors.primary,
     fontSize: 13,
     fontWeight: '600',
-    marginBottom: 14,
   },
   categoriesGrid: {
     flexDirection: 'row',

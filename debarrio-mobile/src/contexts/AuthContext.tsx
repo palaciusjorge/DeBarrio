@@ -1,3 +1,4 @@
+
 import {
   createContext,
   useCallback,
@@ -16,6 +17,7 @@ type AuthContextValue = {
   session: Session | null;
   user: User | null;
   loading: boolean;
+  initializationError: string | null;
   signOut: () => Promise<void>;
 };
 
@@ -28,6 +30,9 @@ type AuthProviderProps = {
 export function AuthProvider({ children }: AuthProviderProps) {
   const [session, setSession] = useState<Session | null>(null);
   const [loading, setLoading] = useState(true);
+  const [initializationError, setInitializationError] = useState<string | null>(
+    null,
+  );
 
   useEffect(() => {
     let mounted = true;
@@ -43,6 +48,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
       }
 
       setSession(nextSession);
+      setInitializationError(null);
       setLoading(false);
     });
 
@@ -55,17 +61,26 @@ export function AuthProvider({ children }: AuthProviderProps) {
 
         if (error) {
           console.error('Error al recuperar la sesión:', error);
+          setInitializationError(
+            'No se pudo recuperar la sesión. Inténtalo de nuevo.',
+          );
+        } else {
+          setSession(data.session);
+          setInitializationError(null);
         }
 
-        setSession(data.session);
         setLoading(false);
       })
       .catch((error: unknown) => {
-        if (!mounted) {
+        if (!mounted || receivedAuthEvent) {
           return;
         }
 
         console.error('Error al inicializar la autenticación:', error);
+
+        setInitializationError(
+          'No se pudo inicializar la autenticación. Inténtalo de nuevo.',
+        );
         setLoading(false);
       });
 
@@ -88,9 +103,10 @@ export function AuthProvider({ children }: AuthProviderProps) {
       session,
       user: session?.user ?? null,
       loading,
+      initializationError,
       signOut,
     }),
-    [session, loading, signOut],
+    [session, loading, initializationError, signOut],
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
