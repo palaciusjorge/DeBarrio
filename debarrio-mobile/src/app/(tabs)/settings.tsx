@@ -56,17 +56,28 @@ export default function SettingsScreen() {
           <View style={styles.card}>
             <Text style={styles.sectionTitle}>Únete a DeBarrio</Text>
             <Text style={styles.description}>
-              Crea una cuenta para disfrutar de todas las funciones.
+              Inicia sesión o crea una cuenta para disfrutar de todas las
+              funciones.
             </Text>
             <Pressable
               accessibilityRole="button"
-              onPress={() => router.push('/register')}
+              onPress={() => router.push('/login')}
               style={({ pressed }) => [
                 styles.primaryButton,
                 pressed && styles.pressed,
               ]}
             >
-              <Text style={styles.primaryButtonText}>Crear cuenta</Text>
+              <Text style={styles.primaryButtonText}>Iniciar sesión</Text>
+            </Pressable>
+            <Pressable
+              accessibilityRole="button"
+              onPress={() => router.push('/register')}
+              style={({ pressed }) => [
+                styles.secondaryButton,
+                pressed && styles.pressed,
+              ]}
+            >
+              <Text style={styles.secondaryButtonText}>Crear cuenta</Text>
             </Pressable>
           </View>
         )}

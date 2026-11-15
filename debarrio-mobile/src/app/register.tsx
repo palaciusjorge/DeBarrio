@@ -14,11 +14,11 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
 
 import { colors } from '@/constants/theme';
+import { emailPattern } from '@/lib/auth/validation';
 import { supabase } from '@/lib/supabase/client';
 
 type RegistrationStatus = 'idle' | 'complete';
 
-const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const minimumPasswordLength = 8;
 
 export default function RegisterScreen() {

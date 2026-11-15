@@ -18,6 +18,7 @@ type AuthContextValue = {
   user: User | null;
   loading: boolean;
   initializationError: string | null;
+  signInWithPassword: (email: string, password: string) => Promise<void>;
   signOut: () => Promise<void>;
 };
 
@@ -90,6 +91,20 @@ export function AuthProvider({ children }: AuthProviderProps) {
     };
   }, []);
 
+  const signInWithPassword = useCallback(
+    async (email: string, password: string) => {
+      const { error } = await supabase.auth.signInWithPassword({
+        email,
+        password,
+      });
+
+      if (error) {
+        throw error;
+      }
+    },
+    [],
+  );
+
   const signOut = useCallback(async () => {
     const { error } = await supabase.auth.signOut();
 
@@ -104,9 +119,10 @@ export function AuthProvider({ children }: AuthProviderProps) {
       user: session?.user ?? null,
       loading,
       initializationError,
+      signInWithPassword,
       signOut,
     }),
-    [session, loading, initializationError, signOut],
+    [session, loading, initializationError, signInWithPassword, signOut],
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
