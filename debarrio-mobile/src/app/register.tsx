@@ -11,13 +11,12 @@ import {
   View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import * as Linking from 'expo-linking';
 import { router } from 'expo-router';
 
 import { colors } from '@/constants/theme';
 import { supabase } from '@/lib/supabase/client';
 
-type RegistrationStatus = 'idle' | 'confirmation' | 'complete';
+type RegistrationStatus = 'idle' | 'complete';
 
 const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const minimumPasswordLength = 8;
@@ -29,15 +28,11 @@ export default function RegisterScreen() {
   const [password, setPassword] = useState('');
   const [passwordConfirmation, setPasswordConfirmation] = useState('');
   const [status, setStatus] = useState<RegistrationStatus>('idle');
-  const [confirmationEmail, setConfirmationEmail] = useState('');
   const [loading, setLoading] = useState(false);
-  const [resending, setResending] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
-  const [notice, setNotice] = useState<string | null>(null);
 
   async function handleRegister() {
     setErrorMessage(null);
-    setNotice(null);
 
     const trimmedName = name.trim();
     const trimmedSurname = surname.trim();
@@ -76,14 +71,18 @@ export default function RegisterScreen() {
             name: trimmedName,
             surname: trimmedSurname,
           },
-          emailRedirectTo: Linking.createURL('auth/callback'),
         },
       });
 
       if (error) throw error;
 
-      setConfirmationEmail(normalizedEmail);
-      setStatus(data.session ? 'complete' : 'confirmation');
+      if (!data.session) {
+        throw new Error(
+          'La cuenta se ha creado, pero no se ha iniciado la sesión. Comprueba la configuración de confirmación de correo en Supabase.',
+        );
+      }
+
+      setStatus('complete');
     } catch (error) {
       console.error('Error al registrar el usuario:', error);
       setErrorMessage(
@@ -96,75 +95,15 @@ export default function RegisterScreen() {
     }
   }
 
-  async function handleResendConfirmation() {
-    setErrorMessage(null);
-    setNotice(null);
-    setResending(true);
-
-    try {
-      const { error } = await supabase.auth.resend({
-        type: 'signup',
-        email: confirmationEmail,
-        options: {
-          emailRedirectTo: Linking.createURL('auth/callback'),
-        },
-      });
-
-      if (error) throw error;
-      setNotice('Hemos enviado otro correo de confirmación.');
-    } catch (error) {
-      console.error('Error al reenviar la confirmación:', error);
-      setErrorMessage(
-        error instanceof Error
-          ? error.message
-          : 'No se ha podido reenviar el correo. Inténtalo de nuevo.',
-      );
-    } finally {
-      setResending(false);
-    }
-  }
-
   if (status !== 'idle') {
-    const confirmationPending = status === 'confirmation';
-
     return (
       <SafeAreaView style={styles.safeArea}>
         <View style={styles.resultContainer}>
-          <Text style={styles.title}>
-            {confirmationPending ? 'Confirma tu correo' : 'Cuenta creada'}
-          </Text>
+          <Text style={styles.title}>¡Cuenta creada!</Text>
+
           <Text style={styles.description}>
-            {confirmationPending
-              ? `Te hemos enviado un enlace a ${confirmationEmail}. Ábrelo para confirmar tu cuenta y continuar.`
-              : 'Tu cuenta se ha creado correctamente.'}
+            Tu cuenta se ha creado correctamente. Ya puedes disfrutar de DeBarrio.
           </Text>
-
-          {notice ? <Text style={styles.notice}>{notice}</Text> : null}
-          {errorMessage ? (
-            <Text accessibilityRole="alert" style={styles.error}>
-              {errorMessage}
-            </Text>
-          ) : null}
-
-          {confirmationPending && (
-            <Pressable
-              accessibilityRole="button"
-              disabled={resending}
-              onPress={handleResendConfirmation}
-              style={({ pressed }) => [
-                styles.secondaryButton,
-                (pressed || resending) && styles.buttonPressed,
-              ]}
-            >
-              {resending ? (
-                <ActivityIndicator color={colors.primary} />
-              ) : (
-                <Text style={styles.secondaryButtonText}>
-                  Reenviar correo
-                </Text>
-              )}
-            </Pressable>
-          )}
 
           <Pressable
             accessibilityRole="button"
@@ -174,9 +113,7 @@ export default function RegisterScreen() {
               pressed && styles.buttonPressed,
             ]}
           >
-            <Text style={styles.primaryButtonText}>
-              {confirmationPending ? 'Volver al inicio' : 'Continuar'}
-            </Text>
+            <Text style={styles.primaryButtonText}>Continuar</Text>
           </Pressable>
         </View>
       </SafeAreaView>
@@ -383,21 +320,6 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '700',
   },
-  secondaryButton: {
-    alignItems: 'center',
-    borderColor: colors.primary,
-    borderRadius: 14,
-    borderWidth: 1,
-    justifyContent: 'center',
-    marginTop: 24,
-    minHeight: 50,
-    paddingHorizontal: 18,
-  },
-  secondaryButtonText: {
-    color: colors.primary,
-    fontSize: 15,
-    fontWeight: '700',
-  },
   buttonPressed: {
     opacity: 0.75,
   },
@@ -406,11 +328,6 @@ const styles = StyleSheet.create({
     fontSize: 14,
     lineHeight: 20,
     marginTop: 16,
-  },
-  notice: {
-    color: colors.primary,
-    fontSize: 14,
-    marginTop: 18,
   },
   resultContainer: {
     flex: 1,
