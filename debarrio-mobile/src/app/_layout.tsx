@@ -34,6 +34,7 @@ export default function RootLayout() {
     <AuthProvider>
       <Stack screenOptions={{ headerShown: false }}>
         <Stack.Screen name="(tabs)" />
+        <Stack.Screen name="register" />
         <Stack.Screen
           name="business/[id]"
           options={{ headerShown: true, title: 'Comercio' }}

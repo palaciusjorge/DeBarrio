@@ -6,7 +6,7 @@ import {
   Text,
   View,
 } from 'react-native';
-import { Link } from 'expo-router';
+import { router } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { colors } from '@/constants/theme';
@@ -58,17 +58,16 @@ export default function SettingsScreen() {
             <Text style={styles.description}>
               Crea una cuenta para disfrutar de todas las funciones.
             </Text>
-            <Link href="/register" asChild>
-              <Pressable
-                accessibilityRole="button"
-                style={({ pressed }) => [
-                  styles.primaryButton,
-                  pressed && styles.pressed,
-                ]}
-              >
-                <Text style={styles.primaryButtonText}>Crear cuenta</Text>
-              </Pressable>
-            </Link>
+            <Pressable
+              accessibilityRole="button"
+              onPress={() => router.push('/register')}
+              style={({ pressed }) => [
+                styles.primaryButton,
+                pressed && styles.pressed,
+              ]}
+            >
+              <Text style={styles.primaryButtonText}>Crear cuenta</Text>
+            </Pressable>
           </View>
         )}
       </View>

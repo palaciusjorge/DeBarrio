@@ -1,6 +1,8 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   ActivityIndicator,
+  Linking,
+  Platform,
   Pressable,
   StyleSheet,
   Text,
@@ -28,6 +30,11 @@ type Business = {
 };
 
 type LocationStatus = 'loading' | 'ready' | 'denied' | 'error';
+
+type CurrentLocationResult = {
+  location: Coordinate | null;
+  canAskAgain: boolean;
+};
 
 function isValidCoordinate(
   latitude: number | null,
@@ -72,10 +79,16 @@ async function fetchBusinesses(): Promise<Business[]> {
   return data ?? [];
 }
 
-async function getCurrentLocation(): Promise<Coordinate | null> {
-  const permission = await Location.requestForegroundPermissionsAsync();
+async function getCurrentLocation(): Promise<CurrentLocationResult> {
+  let permission = await Location.getForegroundPermissionsAsync();
 
-  if (!permission.granted) return null;
+  if (!permission.granted && permission.canAskAgain) {
+    permission = await Location.requestForegroundPermissionsAsync();
+  }
+
+  if (!permission.granted) {
+    return { location: null, canAskAgain: permission.canAskAgain };
+  }
 
   const currentPosition = await Location.getCurrentPositionAsync({
     accuracy: Location.Accuracy.Balanced,
@@ -86,7 +99,10 @@ async function getCurrentLocation(): Promise<Coordinate | null> {
     throw new Error('El dispositivo no ha devuelto una ubicación válida.');
   }
 
-  return { latitude, longitude };
+  return {
+    location: { latitude, longitude },
+    canAskAgain: permission.canAskAgain,
+  };
 }
 
 export default function MapScreen() {
@@ -96,6 +112,8 @@ export default function MapScreen() {
   const [userLocation, setUserLocation] = useState<Coordinate | null>(null);
   const [locationStatus, setLocationStatus] =
     useState<LocationStatus>('loading');
+  const [locationPermissionCanAskAgain, setLocationPermissionCanAskAgain] =
+    useState(true);
   const [locationError, setLocationError] = useState<string | null>(null);
 
   const loadBusinesses = useCallback(async () => {
@@ -120,7 +138,9 @@ export default function MapScreen() {
     setLocationError(null);
 
     try {
-      const location = await getCurrentLocation();
+      const { location, canAskAgain } = await getCurrentLocation();
+      setLocationPermissionCanAskAgain(canAskAgain);
+
       if (!location) {
         setUserLocation(null);
         setLocationStatus('denied');
@@ -139,6 +159,29 @@ export default function MapScreen() {
       setLocationStatus('error');
     }
   }, []);
+
+  const handleLocationAction = useCallback(async () => {
+    try {
+      const permission = await Location.getForegroundPermissionsAsync();
+      if (
+        !permission.granted &&
+        !permission.canAskAgain &&
+        Platform.OS !== 'web'
+      ) {
+        await Linking.openSettings();
+        return;
+      }
+
+      await requestLocation();
+    } catch (error) {
+      setLocationError(
+        error instanceof Error
+          ? error.message
+          : 'No se ha podido abrir la configuración de ubicación.',
+      );
+      setLocationStatus('error');
+    }
+  }, [requestLocation]);
 
   useEffect(() => {
     let active = true;
@@ -174,8 +217,9 @@ export default function MapScreen() {
 
     async function loadInitialLocation() {
       try {
-        const location = await getCurrentLocation();
+        const { location, canAskAgain } = await getCurrentLocation();
         if (!active) return;
+        setLocationPermissionCanAskAgain(canAskAgain);
 
         if (!location) {
           setUserLocation(null);
@@ -212,8 +256,17 @@ export default function MapScreen() {
       ),
     [businesses],
   );
+  const laEsquina = locatedBusinesses.find(
+    (business) => business.name.trim().toLowerCase() === 'la esquina',
+  );
   const center =
     userLocation ??
+    (laEsquina
+      ? {
+          latitude: laEsquina.latitude,
+          longitude: laEsquina.longitude,
+        }
+      : null) ??
     averageCoordinate(
       locatedBusinesses.map(({ latitude, longitude }) => ({
         latitude,
@@ -242,15 +295,23 @@ export default function MapScreen() {
       {locationStatus === 'denied' ? (
         <View style={styles.notice}>
           <Text style={styles.noticeText}>
-            No tenemos permiso para usar tu ubicación. El mapa se centra en los
-            comercios disponibles.
+            {locationPermissionCanAskAgain
+              ? 'No tenemos permiso para usar tu ubicación.'
+              : Platform.OS === 'web'
+                ? 'El permiso de ubicación está bloqueado. Puedes activarlo en los ajustes del navegador.'
+                : 'El permiso de ubicación está bloqueado. Puedes activarlo en los ajustes del dispositivo.'}{' '}
+            El mapa se centra en los comercios disponibles.
           </Text>
           <Pressable
             accessibilityRole="button"
-            onPress={() => void requestLocation()}
+            onPress={() => void handleLocationAction()}
             style={styles.noticeAction}
           >
-            <Text style={styles.noticeActionText}>Volver a solicitar</Text>
+            <Text style={styles.noticeActionText}>
+              {locationPermissionCanAskAgain || Platform.OS === 'web'
+                ? 'Volver a solicitar'
+                : 'Abrir ajustes'}
+            </Text>
           </Pressable>
         </View>
       ) : null}
