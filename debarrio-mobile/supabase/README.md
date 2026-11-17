@@ -62,6 +62,7 @@ Esto permite mostrar el catálogo sin exigir una sesión. La política pública 
 - Un trigger crea automáticamente el perfil en `public.users` al registrarse en Supabase Auth.
 - El rol inicial asignado por el trigger es `user`.
 - Un trigger impide que una sesión autenticada cambie el campo `role`. La promoción a rol `business` debe realizarse mediante un proceso administrativo o controlado, nunca confiando en un valor enviado libremente por el cliente.
+- Tras iniciar sesión, la app lee el perfil propio para obtener el rol y, si es `business`, busca un negocio asociado mediante `businesses.owner_id`. El acceso al panel desde Ajustes y la validación de la pantalla son controles de interfaz; no sustituyen las políticas RLS. Las consultas y operaciones sobre negocios, productos y ofertas siguen sujetas a las políticas de propiedad descritas en esta sección.
 
 ### Propiedad y gestión de negocios
 

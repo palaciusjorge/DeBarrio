@@ -45,6 +45,8 @@ export default function LoginScreen() {
   }, [authLoading, user]);
 
   async function handleSignIn() {
+    if (loading) return;
+
     setErrorMessage(null);
 
     const normalizedEmail = email.trim().toLowerCase();

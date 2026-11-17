@@ -13,7 +13,15 @@ import { colors } from '@/constants/theme';
 import { useAuth } from '@/contexts/AuthContext';
 
 export default function SettingsScreen() {
-  const { user, loading, signOut } = useAuth();
+  const {
+    user,
+    loading,
+    profile,
+    business,
+    profileLoading,
+    profileError,
+    signOut,
+  } = useAuth();
   const [error, setError] = useState<string | null>(null);
 
   async function handleSignOut() {
@@ -36,6 +44,33 @@ export default function SettingsScreen() {
           <View style={styles.card}>
             <Text style={styles.sectionTitle}>Tu cuenta</Text>
             <Text style={styles.email}>{user.email}</Text>
+            {profileLoading ? (
+              <ActivityIndicator
+                color={colors.primary}
+                style={styles.profileLoading}
+              />
+            ) : profileError ? (
+              <Text accessibilityRole="alert" style={styles.error}>
+                {profileError}
+              </Text>
+            ) : profile ? (
+              <Text style={styles.accountType}>
+                Tipo de cuenta:{' '}
+                {profile.role === 'business' ? 'Comercio' : 'Usuario'}
+              </Text>
+            ) : null}
+            {profile?.role === 'business' && business ? (
+              <Pressable
+                accessibilityRole="button"
+                onPress={() => router.push('/business/dashboard')}
+                style={({ pressed }) => [
+                  styles.secondaryButton,
+                  pressed && styles.pressed,
+                ]}
+              >
+                <Text style={styles.secondaryButtonText}>Mi negocio</Text>
+              </Pressable>
+            ) : null}
             {error ? (
               <Text accessibilityRole="alert" style={styles.error}>
                 {error}
@@ -117,6 +152,14 @@ const styles = StyleSheet.create({
     color: colors.secondaryText,
     fontSize: 15,
     marginTop: 8,
+  },
+  profileLoading: {
+    marginTop: 16,
+  },
+  accountType: {
+    color: colors.secondaryText,
+    fontSize: 14,
+    marginTop: 12,
   },
   description: {
     color: colors.secondaryText,

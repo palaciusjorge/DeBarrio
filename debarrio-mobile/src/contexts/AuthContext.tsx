@@ -5,6 +5,7 @@ import {
   useContext,
   useEffect,
   useMemo,
+  useRef,
   useState,
   type ReactNode,
 } from 'react';
@@ -13,10 +14,30 @@ import type { Session, User } from '@supabase/supabase-js';
 
 import { supabase } from '@/lib/supabase/client';
 
+export type UserProfile = {
+  id: string;
+  name: string;
+  surname: string | null;
+  role: 'user' | 'business';
+  location_city: string | null;
+};
+
+export type OwnedBusiness = {
+  id: number;
+  name: string;
+  description: string | null;
+  address: string | null;
+  city: string | null;
+};
+
 type AuthContextValue = {
   session: Session | null;
   user: User | null;
   loading: boolean;
+  profile: UserProfile | null;
+  business: OwnedBusiness | null;
+  profileLoading: boolean;
+  profileError: string | null;
   initializationError: string | null;
   signInWithPassword: (email: string, password: string) => Promise<void>;
   signOut: () => Promise<void>;
@@ -31,9 +52,14 @@ type AuthProviderProps = {
 export function AuthProvider({ children }: AuthProviderProps) {
   const [session, setSession] = useState<Session | null>(null);
   const [loading, setLoading] = useState(true);
+  const [profile, setProfile] = useState<UserProfile | null>(null);
+  const [business, setBusiness] = useState<OwnedBusiness | null>(null);
+  const [profileLoading, setProfileLoading] = useState(false);
+  const [profileError, setProfileError] = useState<string | null>(null);
   const [initializationError, setInitializationError] = useState<string | null>(
     null,
   );
+  const currentUserId = useRef<string | null>(null);
 
   useEffect(() => {
     let mounted = true;
@@ -49,6 +75,16 @@ export function AuthProvider({ children }: AuthProviderProps) {
       }
 
       setSession(nextSession);
+      const nextUserId = nextSession?.user.id ?? null;
+
+      if (currentUserId.current !== nextUserId) {
+        currentUserId.current = nextUserId;
+        setProfile(null);
+        setBusiness(null);
+        setProfileLoading(Boolean(nextSession));
+        setProfileError(null);
+      }
+
       setInitializationError(null);
       setLoading(false);
     });
@@ -65,8 +101,15 @@ export function AuthProvider({ children }: AuthProviderProps) {
           setInitializationError(
             'No se pudo recuperar la sesión. Inténtalo de nuevo.',
           );
+          setProfileLoading(false);
         } else {
           setSession(data.session);
+          const nextUserId = data.session?.user.id ?? null;
+          currentUserId.current = nextUserId;
+          setProfile(null);
+          setBusiness(null);
+          setProfileLoading(Boolean(data.session));
+          setProfileError(null);
           setInitializationError(null);
         }
 
@@ -79,6 +122,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
 
         console.error('Error al inicializar la autenticación:', error);
 
+        setProfileLoading(false);
         setInitializationError(
           'No se pudo inicializar la autenticación. Inténtalo de nuevo.',
         );
@@ -90,6 +134,91 @@ export function AuthProvider({ children }: AuthProviderProps) {
       subscription.unsubscribe();
     };
   }, []);
+
+  useEffect(() => {
+    const userId = session?.user.id;
+
+    if (!userId) {
+      return;
+    }
+
+    let active = true;
+
+    async function loadProfile() {
+      try {
+        const profileResult = await supabase
+          .from('users')
+          .select('id, name, surname, role, location_city')
+          .eq('id', userId)
+          .maybeSingle();
+
+        if (profileResult.error) {
+          throw profileResult.error;
+        }
+
+        if (!profileResult.data) {
+          throw new Error('No existe un perfil para este usuario.');
+        }
+
+        if (
+          profileResult.data.role !== 'user' &&
+          profileResult.data.role !== 'business'
+        ) {
+          throw new Error('El perfil tiene un rol no válido.');
+        }
+
+        const loadedProfile: UserProfile = {
+          id: profileResult.data.id,
+          name: profileResult.data.name,
+          surname: profileResult.data.surname,
+          role: profileResult.data.role,
+          location_city: profileResult.data.location_city,
+        };
+        let ownedBusiness: OwnedBusiness | null = null;
+
+        if (loadedProfile.role === 'business') {
+          const businessResult = await supabase
+            .from('businesses')
+            .select('id, name, description, address, city')
+            .eq('owner_id', userId)
+            .order('id', { ascending: true })
+            .limit(1)
+            .maybeSingle();
+
+          if (businessResult.error) {
+            throw businessResult.error;
+          }
+
+          ownedBusiness = businessResult.data;
+        }
+
+        if (active) {
+          setProfile(loadedProfile);
+          setBusiness(ownedBusiness);
+        }
+      } catch (error) {
+        console.error('Error al cargar el perfil del usuario:', error);
+
+        if (active) {
+          setProfile(null);
+          setBusiness(null);
+          setProfileError(
+            'No se pudo cargar tu perfil. Comprueba tu conexión e inténtalo de nuevo.',
+          );
+        }
+      } finally {
+        if (active) {
+          setProfileLoading(false);
+        }
+      }
+    }
+
+    void loadProfile();
+
+    return () => {
+      active = false;
+    };
+  }, [session?.user.id]);
 
   const signInWithPassword = useCallback(
     async (email: string, password: string) => {
@@ -118,11 +247,25 @@ export function AuthProvider({ children }: AuthProviderProps) {
       session,
       user: session?.user ?? null,
       loading,
+      profile,
+      business,
+      profileLoading,
+      profileError,
       initializationError,
       signInWithPassword,
       signOut,
     }),
-    [session, loading, initializationError, signInWithPassword, signOut],
+    [
+      session,
+      loading,
+      profile,
+      business,
+      profileLoading,
+      profileError,
+      initializationError,
+      signInWithPassword,
+      signOut,
+    ],
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
