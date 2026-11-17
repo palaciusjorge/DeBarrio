@@ -28,6 +28,10 @@ export type OwnedBusiness = {
   description: string | null;
   address: string | null;
   city: string | null;
+  postal_code: string | null;
+  phone: string | null;
+  email: string | null;
+  website: string | null;
 };
 
 type AuthContextValue = {
@@ -39,6 +43,7 @@ type AuthContextValue = {
   profileLoading: boolean;
   profileError: string | null;
   initializationError: string | null;
+  updateOwnedBusiness: (business: OwnedBusiness) => void;
   signInWithPassword: (email: string, password: string) => Promise<void>;
   signOut: () => Promise<void>;
 };
@@ -179,7 +184,9 @@ export function AuthProvider({ children }: AuthProviderProps) {
         if (loadedProfile.role === 'business') {
           const businessResult = await supabase
             .from('businesses')
-            .select('id, name, description, address, city')
+            .select(
+              'id, name, description, address, city, postal_code, phone, email, website',
+            )
             .eq('owner_id', userId)
             .order('id', { ascending: true })
             .limit(1)
@@ -220,6 +227,10 @@ export function AuthProvider({ children }: AuthProviderProps) {
     };
   }, [session?.user.id]);
 
+  const updateOwnedBusiness = useCallback((updatedBusiness: OwnedBusiness) => {
+    setBusiness(updatedBusiness);
+  }, []);
+
   const signInWithPassword = useCallback(
     async (email: string, password: string) => {
       const { error } = await supabase.auth.signInWithPassword({
@@ -252,6 +263,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
       profileLoading,
       profileError,
       initializationError,
+      updateOwnedBusiness,
       signInWithPassword,
       signOut,
     }),
@@ -263,6 +275,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
       profileLoading,
       profileError,
       initializationError,
+      updateOwnedBusiness,
       signInWithPassword,
       signOut,
     ],

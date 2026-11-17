@@ -11,6 +11,8 @@ La base de datos utiliza **PostgreSQL** y **Supabase Auth** para la autenticaci�
 | `001_initial_schema.sql` | Crea las seis tablas, relaciones, restricciones e índices. |
 | `002_seed_data.sql` | Inserta las ocho categorías iniciales. |
 | `003_rls_policies.sql` | Configura permisos SQL, políticas Row Level Security (RLS) y triggers de seguridad. |
+| `004_restrict_user_profile_update.sql` | Limita las columnas de perfil que puede actualizar un usuario. |
+| `005_business_management_role_policies.sql` | Exige propiedad y rol `business` para gestionar datos privados del comercio. |
 
 ## Requisitos previos
 
@@ -25,6 +27,8 @@ En un proyecto Supabase nuevo, ejecutar los archivos desde el **SQL Editor**, en
 1. `001_initial_schema.sql`: crea las seis tablas principales, sus relaciones, restricciones e índices.
 2. `002_seed_data.sql`: inserta las ocho categorías iniciales.
 3. `003_rls_policies.sql`: activa RLS, concede los permisos mínimos necesarios y crea las políticas y triggers.
+4. `004_restrict_user_profile_update.sql`: restringe las columnas editables del perfil.
+5. `005_business_management_role_policies.sql`: limita la gestión privada al propietario cuyo perfil mantiene el rol `business`.
 
 > **Importante:** `001_initial_schema.sql` está diseñado para una base de datos nueva. No debe ejecutarse sobre una base de datos que ya tenga estas tablas. El script de políticas puede volver a ejecutarse para aplicar o actualizar las políticas definidas en él.
 
@@ -62,22 +66,22 @@ Esto permite mostrar el catálogo sin exigir una sesión. La política pública 
 - Un trigger crea automáticamente el perfil en `public.users` al registrarse en Supabase Auth.
 - El rol inicial asignado por el trigger es `user`.
 - Un trigger impide que una sesión autenticada cambie el campo `role`. La promoción a rol `business` debe realizarse mediante un proceso administrativo o controlado, nunca confiando en un valor enviado libremente por el cliente.
-- Tras iniciar sesión, la app lee el perfil propio para obtener el rol y, si es `business`, busca un negocio asociado mediante `businesses.owner_id`. El acceso al panel desde Ajustes y la validación de la pantalla son controles de interfaz; no sustituyen las políticas RLS. Las consultas y operaciones sobre negocios, productos y ofertas siguen sujetas a las políticas de propiedad descritas en esta sección.
+- Tras iniciar sesión, la app lee el perfil propio para obtener el rol y, si es `business`, busca un negocio asociado mediante `businesses.owner_id`. El acceso al panel desde Ajustes y la validación de la pantalla son controles de interfaz; no sustituyen las políticas RLS.
 
 ### Propiedad y gestión de negocios
 
 - Solo un usuario con rol `business` puede insertar un negocio y debe establecer `owner_id = auth.uid()`.
-- Un propietario puede actualizar o eliminar únicamente los negocios cuyo `owner_id` coincida con su UUID.
+- Solo un propietario cuyo perfil mantenga el rol `business` puede actualizar o eliminar su negocio.
 - Los negocios se pueden leer públicamente; la lectura pública no concede permisos de modificación.
 
 ### Productos, ofertas y categorías de negocio
 
-- Un propietario puede consultar todos los productos y ofertas de sus negocios, incluidos los inactivos o fuera de fecha.
-- Puede insertar, actualizar y eliminar productos y ofertas únicamente si pertenecen a uno de sus negocios.
-- Puede asignar o retirar categorías únicamente de sus propios negocios.
+- Un propietario con rol `business` puede consultar todos los productos y ofertas de sus negocios, incluidos los inactivos o fuera de fecha.
+- Puede insertar, actualizar y eliminar productos y ofertas únicamente si pertenecen a uno de sus negocios y conserva el rol `business`.
+- Puede asignar o retirar categorías únicamente de sus propios negocios mientras conserve ese rol.
 - Los usuarios públicos solo ven los productos activos y las ofertas activas y vigentes, según las reglas indicadas anteriormente.
 
-Las políticas de lectura pública y las políticas de lectura del propietario son permisivas y se combinan mediante OR: el propietario conserva acceso a sus elementos inactivos sin hacerlos públicos. Las operaciones de escritura siguen sujetas a sus políticas de propiedad.
+Las políticas de lectura pública y las políticas de lectura del propietario son permisivas y se combinan mediante OR: el propietario con rol `business` conserva acceso a sus elementos inactivos sin hacerlos públicos. Las operaciones de escritura siguen sujetas a sus políticas de propiedad y rol.
 
 ## Matriz resumida de acceso
 
@@ -86,17 +90,17 @@ Las políticas de lectura pública y las políticas de lectura del propietario s
 | `users` | Sin acceso | Leer y actualizar solo su perfil |
 | `categories` | Leer todas | Leer todas |
 | `businesses` | Leer todos | Leer todos; gestionar solo los propios si tiene rol `business` |
-| `business_categories` | Leer todas | Leer todas; asignar/eliminar solo en negocios propios |
-| `products` | Leer activos | Leer activos y todos los propios; gestionar solo los propios |
-| `offers` | Leer activas y vigentes | Leer activas/vigentes y todas las propias; gestionar solo las propias |
+| `business_categories` | Leer todas | Leer todas; asignar/eliminar solo en negocios propios con rol `business` |
+| `products` | Leer activos | Leer activos; consultar todos y gestionar los propios con rol `business` |
+| `offers` | Leer activas y vigentes | Leer activas/vigentes; consultar todas y gestionar las propias con rol `business` |
 
 ## Verificación recomendada
 
-Después de ejecutar `003_rls_policies.sql`, comprobar en Supabase:
+Después de ejecutar `003_rls_policies.sql`, `004_restrict_user_profile_update.sql` y `005_business_management_role_policies.sql`, comprobar en Supabase:
 
 1. En **Authentication / Policies** o en el editor SQL, que RLS está habilitado en las seis tablas.
 2. Que existen las políticas de lectura pública para categorías, negocios, relaciones, productos activos y ofertas vigentes.
-3. Que existen las políticas de propiedad para perfiles, negocios, productos, ofertas y asociaciones de categorías.
+3. Que las políticas de gestión exigen la propiedad del negocio y el rol `business`.
 4. Probar las consultas desde una sesión sin autenticar y desde dos cuentas autenticadas distintas.
 5. Confirmar que una cuenta propietaria no puede modificar datos de un negocio que pertenece a la otra cuenta.
 
