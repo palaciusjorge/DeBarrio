@@ -32,7 +32,12 @@ export type OwnedBusiness = {
   phone: string | null;
   email: string | null;
   website: string | null;
+  latitude: number | null;
+  longitude: number | null;
 };
+
+export const ownedBusinessColumns =
+  'id, name, description, address, city, postal_code, phone, email, website, latitude, longitude';
 
 type AuthContextValue = {
   session: Session | null;
@@ -184,9 +189,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
         if (loadedProfile.role === 'business') {
           const businessResult = await supabase
             .from('businesses')
-            .select(
-              'id, name, description, address, city, postal_code, phone, email, website',
-            )
+            .select(ownedBusinessColumns)
             .eq('owner_id', userId)
             .order('id', { ascending: true })
             .limit(1)
@@ -228,7 +231,9 @@ export function AuthProvider({ children }: AuthProviderProps) {
   }, [session?.user.id]);
 
   const updateOwnedBusiness = useCallback((updatedBusiness: OwnedBusiness) => {
-    setBusiness(updatedBusiness);
+    setBusiness((current) =>
+      current?.id === updatedBusiness.id ? updatedBusiness : current,
+    );
   }, []);
 
   const signInWithPassword = useCallback(

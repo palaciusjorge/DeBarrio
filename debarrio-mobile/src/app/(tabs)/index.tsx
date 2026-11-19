@@ -11,7 +11,7 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { SymbolView } from 'expo-symbols';
-import { router } from 'expo-router';
+import { router, useIsFocused } from 'expo-router';
 
 import { colors } from '@/constants/theme';
 import { supabase } from '@/lib/supabase/client';
@@ -103,6 +103,7 @@ function normalize(value: string) {
 }
 
 export default function HomeScreen() {
+  const isFocused = useIsFocused();
   const [search, setSearch] = useState('');
   const [selectedCategory, setSelectedCategory] = useState<number | null>(
     null,
@@ -117,8 +118,11 @@ export default function HomeScreen() {
 
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [reload, setReload] = useState(0);
 
   useEffect(() => {
+    if (!isFocused) return;
+
     let active = true;
 
     async function loadData() {
@@ -170,7 +174,7 @@ export default function HomeScreen() {
     return () => {
       active = false;
     };
-  }, []);
+  }, [isFocused, reload]);
 
   const filteredBusinesses = useMemo(() => {
     const query = normalize(search);
@@ -377,6 +381,12 @@ export default function HomeScreen() {
                 No se han podido cargar los datos
               </Text>
               <Text style={styles.emptyDescription}>{error}</Text>
+              <Pressable
+                accessibilityRole="button"
+                onPress={() => setReload((value) => value + 1)}
+              >
+                <Text style={styles.retryLabel}>Reintentar</Text>
+              </Pressable>
             </View>
           ) : filteredBusinesses.length === 0 ? (
             <View style={styles.emptyState}>
@@ -495,6 +505,11 @@ export default function HomeScreen() {
 }
 
 const styles = StyleSheet.create({
+  retryLabel: {
+    color: colors.primary,
+    fontWeight: '700',
+    paddingVertical: 8,
+  },
   safeArea: {
     flex: 1,
     backgroundColor: colors.background,

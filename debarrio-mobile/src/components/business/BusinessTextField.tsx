@@ -14,10 +14,11 @@ type BusinessTextFieldProps = {
   onChangeText: (value: string) => void;
   placeholder?: string;
   value: string;
-} & Pick<TextInputProps, 'autoCapitalize' | 'keyboardType'>;
+} & Pick<TextInputProps, 'autoCapitalize' | 'editable' | 'keyboardType'>;
 
 export function BusinessTextField({
   autoCapitalize,
+  editable,
   keyboardType,
   label,
   multiline = false,
@@ -31,6 +32,7 @@ export function BusinessTextField({
       <TextInput
         accessibilityLabel={label}
         autoCapitalize={autoCapitalize}
+        editable={editable}
         keyboardType={keyboardType}
         multiline={multiline}
         onChangeText={onChangeText}

@@ -6,13 +6,23 @@ import { BusinessPrivateScreen } from '@/components/business/BusinessPrivateScre
 import { BusinessTextField } from '@/components/business/BusinessTextField';
 import { colors } from '@/constants/theme';
 import {
+  ownedBusinessColumns,
   type OwnedBusiness,
   useAuth,
 } from '@/contexts/AuthContext';
+import { isValidLatitude, isValidLongitude } from '@/lib/coordinates';
 import { supabase } from '@/lib/supabase/client';
 
 function optionalValue(value: string) {
   return value.trim() || null;
+}
+
+function parseCoordinate(value: string) {
+  const normalized = value.trim().replace(',', '.');
+  if (!normalized) return null;
+  return /^[+-]?(?:\d+(?:\.\d+)?|\.\d+)(?:e[+-]?\d+)?$/i.test(normalized)
+    ? Number(normalized)
+    : NaN;
 }
 
 function BusinessProfileForm({ business }: { business: OwnedBusiness }) {
@@ -25,19 +35,26 @@ function BusinessProfileForm({ business }: { business: OwnedBusiness }) {
   const [phone, setPhone] = useState(business.phone ?? '');
   const [email, setEmail] = useState(business.email ?? '');
   const [website, setWebsite] = useState(business.website ?? '');
+  const [latitude, setLatitude] = useState(String(business.latitude ?? ''));
+  const [longitude, setLongitude] = useState(String(business.longitude ?? ''));
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [saved, setSaved] = useState(false);
 
   async function saveBusiness() {
     if (saving) return;
+    setSaved(false);
 
     const normalizedName = name.trim();
     const normalizedEmail = email.trim();
+    const coordinatesChanged =
+      latitude.trim() !== String(business.latitude ?? '') ||
+      longitude.trim() !== String(business.longitude ?? '');
+    const parsedLatitude = parseCoordinate(latitude);
+    const parsedLongitude = parseCoordinate(longitude);
 
     if (!normalizedName) {
       setError('El nombre del comercio es obligatorio.');
-      setSaved(false);
       return;
     }
 
@@ -46,13 +63,22 @@ function BusinessProfileForm({ business }: { business: OwnedBusiness }) {
       !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(normalizedEmail)
     ) {
       setError('Introduce un correo electrónico válido.');
-      setSaved(false);
+      return;
+    }
+
+    if (
+      coordinatesChanged &&
+      (parsedLatitude !== null || parsedLongitude !== null) &&
+      (!isValidLatitude(parsedLatitude) || !isValidLongitude(parsedLongitude))
+    ) {
+      setError(
+        'Introduce una latitud entre −90 y 90 y una longitud entre −180 y 180.',
+      );
       return;
     }
 
     setSaving(true);
     setError(null);
-    setSaved(false);
 
     try {
       const { data, error: updateError } = await supabase
@@ -66,11 +92,12 @@ function BusinessProfileForm({ business }: { business: OwnedBusiness }) {
           phone: optionalValue(phone),
           email: optionalValue(normalizedEmail),
           website: optionalValue(website),
+          ...(coordinatesChanged
+            ? { latitude: parsedLatitude, longitude: parsedLongitude }
+            : {}),
         })
         .eq('id', business.id)
-        .select(
-          'id, name, description, address, city, postal_code, phone, email, website',
-        )
+        .select(ownedBusinessColumns)
         .single();
 
       if (updateError) throw updateError;
@@ -80,6 +107,8 @@ function BusinessProfileForm({ business }: { business: OwnedBusiness }) {
       }
 
       updateOwnedBusiness(data);
+      setLatitude(String(data.latitude ?? ''));
+      setLongitude(String(data.longitude ?? ''));
       setSaved(true);
     } catch (saveError) {
       console.error('Error al actualizar el comercio:', saveError);
@@ -136,6 +165,22 @@ function BusinessProfileForm({ business }: { business: OwnedBusiness }) {
         onChangeText={setWebsite}
         value={website}
       />
+      <BusinessTextField
+        editable={!saving}
+        label="Latitud"
+        onChangeText={setLatitude}
+        value={latitude}
+      />
+      <BusinessTextField
+        editable={!saving}
+        label="Longitud"
+        onChangeText={setLongitude}
+        value={longitude}
+      />
+      <Text style={styles.help}>
+        Actualiza ambas coordenadas si cambia la ubicación del comercio.
+        Deja ambos campos vacíos para ocultarlo del mapa.
+      </Text>
 
       {error ? (
         <Text accessibilityRole="alert" style={styles.error}>
@@ -164,6 +209,11 @@ export default function EditBusinessScreen() {
 }
 
 const styles = StyleSheet.create({
+  help: {
+    color: colors.muted,
+    fontSize: 14,
+    lineHeight: 20,
+  },
   form: {
     gap: 16,
   },

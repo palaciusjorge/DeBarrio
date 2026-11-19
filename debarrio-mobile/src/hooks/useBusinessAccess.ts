@@ -6,6 +6,10 @@ import { useAuth } from '@/contexts/AuthContext';
 export function useBusinessAccess() {
   const { user, loading, profile, business, profileLoading, profileError } =
     useAuth();
+  const ownedBusiness =
+    user && profile?.id === user.id && profile.role === 'business'
+      ? business
+      : null;
 
   useEffect(() => {
     if (loading || profileLoading || profileError) {
@@ -14,13 +18,13 @@ export function useBusinessAccess() {
 
     if (!user) {
       router.replace('/login');
-    } else if (profile?.role !== 'business' || !business) {
+    } else if (!ownedBusiness) {
       router.replace('/(tabs)/settings');
     }
-  }, [loading, profileLoading, profileError, user, profile, business]);
+  }, [loading, profileLoading, profileError, user, ownedBusiness]);
 
   return {
-    business,
+    business: ownedBusiness,
     error: profileError,
     loading: loading || profileLoading,
   };
