@@ -62,7 +62,7 @@ export default function SettingsScreen() {
             {profile?.role === 'business' && business ? (
               <Pressable
                 accessibilityRole="button"
-                onPress={() => router.push('/business/dashboard')}
+                onPress={() => router.navigate('/(tabs)')}
                 style={({ pressed }) => [
                   styles.secondaryButton,
                   pressed && styles.pressed,

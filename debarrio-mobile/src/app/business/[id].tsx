@@ -56,7 +56,8 @@ type Offer = {
 };
 
 export default function BusinessDetailScreen() {
-  const { id } = useLocalSearchParams<{ id: string }>();
+  const { id, from } = useLocalSearchParams<{ id: string; from?: string }>();
+  const backLabel = from === 'panel' ? 'Volver a Mi negocio' : 'Volver a los comercios';
   const isFocused = useIsFocused();
 
   const [business, setBusiness] = useState<Business | null>(null);
@@ -185,7 +186,7 @@ export default function BusinessDetailScreen() {
           headerBackVisible: false,
           headerLeft: () => (
             <Pressable
-              accessibilityLabel="Volver a los comercios"
+              accessibilityLabel={backLabel}
               accessibilityRole="button"
               onPress={() => {
                 if (router.canGoBack()) {
@@ -206,7 +207,7 @@ export default function BusinessDetailScreen() {
                 size={20}
               />
               <Text numberOfLines={1} style={styles.backButtonText}>
-                Volver a los comercios
+                {backLabel}
               </Text>
             </Pressable>
           ),
