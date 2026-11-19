@@ -13,7 +13,9 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { SymbolView } from 'expo-symbols';
 import { router, useIsFocused } from 'expo-router';
 
+import { BusinessDashboard } from '@/components/business/BusinessDashboard';
 import { colors } from '@/constants/theme';
+import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/lib/supabase/client';
 
 type Category = {
@@ -103,6 +105,20 @@ function normalize(value: string) {
 }
 
 export default function HomeScreen() {
+  const { business, loading, profileLoading } = useAuth();
+
+  if (loading || profileLoading) {
+    return (
+      <SafeAreaView edges={['top']} style={styles.homeLoading}>
+        <ActivityIndicator color={colors.primary} />
+      </SafeAreaView>
+    );
+  }
+
+  return business ? <BusinessDashboard business={business} /> : <DirectoryScreen />;
+}
+
+function DirectoryScreen() {
   const isFocused = useIsFocused();
   const [search, setSearch] = useState('');
   const [selectedCategory, setSelectedCategory] = useState<number | null>(
@@ -505,6 +521,12 @@ export default function HomeScreen() {
 }
 
 const styles = StyleSheet.create({
+  homeLoading: {
+    alignItems: 'center',
+    backgroundColor: colors.background,
+    flex: 1,
+    justifyContent: 'center',
+  },
   retryLabel: {
     color: colors.primary,
     fontWeight: '700',

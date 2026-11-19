@@ -16,13 +16,11 @@ import { useBusinessAccess } from '@/hooks/useBusinessAccess';
 
 type BusinessPrivateScreenProps = {
   children: (business: OwnedBusiness) => ReactNode;
-  showPanelLink?: boolean;
   title: string;
 };
 
 export function BusinessPrivateScreen({
   children,
-  showPanelLink = true,
   title,
 }: BusinessPrivateScreenProps) {
   const { business, error, loading } = useBusinessAccess();
@@ -30,18 +28,16 @@ export function BusinessPrivateScreen({
   return (
     <SafeAreaView edges={['top']} style={styles.safeArea}>
       <ScrollView contentContainerStyle={styles.content}>
-        {showPanelLink ? (
-          <Pressable
-            accessibilityRole="button"
-            onPress={() => router.replace('/business/dashboard')}
-            style={({ pressed }) => [
-              styles.panelLink,
-              pressed && styles.pressed,
-            ]}
-          >
-            <Text style={styles.panelLinkText}>‹ Panel del negocio</Text>
-          </Pressable>
-        ) : null}
+        <Pressable
+          accessibilityRole="button"
+          onPress={() => router.dismissTo('/(tabs)')}
+          style={({ pressed }) => [
+            styles.panelLink,
+            pressed && styles.pressed,
+          ]}
+        >
+          <Text style={styles.panelLinkText}>‹ Mi negocio</Text>
+        </Pressable>
         <Text style={styles.title}>{title}</Text>
         {loading ? (
           <ActivityIndicator color={colors.primary} />

@@ -3,9 +3,11 @@ import { Tabs } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { colors } from '@/constants/theme';
+import { useAuth } from '@/contexts/AuthContext';
 
 export default function TabLayout() {
   const insets = useSafeAreaInsets();
+  const { business } = useAuth();
 
   return (
     <Tabs
@@ -24,7 +26,7 @@ export default function TabLayout() {
       <Tabs.Screen
         name="index"
         options={{
-          title: 'Inicio',
+          title: business ? 'Mi negocio' : 'Inicio',
           tabBarIcon: ({ color, size }) => (
             <SymbolView
               name={{ ios: 'house.fill', android: 'home', web: 'home' }}
@@ -34,19 +36,21 @@ export default function TabLayout() {
           ),
         }}
       />
-      <Tabs.Screen
-        name="map"
-        options={{
-          title: 'Mapa',
-          tabBarIcon: ({ color, size }) => (
-            <SymbolView
-              name={{ ios: 'map.fill', android: 'map', web: 'map' }}
-              tintColor={color}
-              size={size}
-            />
-          ),
-        }}
-      />
+      <Tabs.Protected guard={!business}>
+        <Tabs.Screen
+          name="map"
+          options={{
+            title: 'Mapa',
+            tabBarIcon: ({ color, size }) => (
+              <SymbolView
+                name={{ ios: 'map.fill', android: 'map', web: 'map' }}
+                tintColor={color}
+                size={size}
+              />
+            ),
+          }}
+        />
+      </Tabs.Protected>
       <Tabs.Screen
         name="settings"
         options={{

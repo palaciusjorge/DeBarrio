@@ -184,7 +184,7 @@ export default function RegisterBusinessScreen() {
     return <Redirect href={{ pathname: '/login', params: { next: 'business' } }} />;
   }
   if (!loading && !profileLoading && business && profile?.id === user?.id) {
-    return <Redirect href="/business/dashboard" />;
+    return <Redirect href="/(tabs)" />;
   }
 
   return (
@@ -202,7 +202,7 @@ export default function RegisterBusinessScreen() {
               key={user.id}
               onRegistered={() => {
                 reloadProfile();
-                router.replace('/(tabs)/settings');
+                router.dismissTo('/(tabs)');
               }}
             />
           ) : (
