@@ -176,6 +176,8 @@ export default function BusinessDetailScreen() {
     };
   }, [id, isFocused, reload]);
 
+  const publicPhone = business?.phone?.trim();
+  const publicEmail = business?.email?.trim();
   return (
     <SafeAreaView edges={['bottom']} style={styles.safeArea}>
       <Stack.Screen
@@ -295,30 +297,30 @@ export default function BusinessDetailScreen() {
                       .join(', ') || 'Dirección no disponible'
                   }
                 />
-                {business.phone && (
-                  <InfoRow
-                    symbol={{
-                      ios: 'phone.fill',
-                      android: 'call',
-                      web: 'call',
-                    }}
-                    label="Teléfono"
-                    value={business.phone}
-                    href={getPhoneUrl(business.phone)}
-                  />
-                )}
-                {business.email && (
-                  <InfoRow
-                    symbol={{
-                      ios: 'envelope.fill',
-                      android: 'email',
-                      web: 'email',
-                    }}
-                    label="Correo electrónico"
-                    value={business.email}
-                    href={`mailto:${encodeURIComponent(business.email.trim())}`}
-                  />
-                )}
+                <InfoRow
+                  symbol={{
+                    ios: 'phone.fill',
+                    android: 'call',
+                    web: 'call',
+                  }}
+                  label="Teléfono"
+                  value={publicPhone || 'Sin publicar'}
+                  href={publicPhone ? getPhoneUrl(publicPhone) : undefined}
+                />
+                <InfoRow
+                  symbol={{
+                    ios: 'envelope.fill',
+                    android: 'email',
+                    web: 'email',
+                  }}
+                  label="Correo electrónico"
+                  value={publicEmail || 'Sin publicar'}
+                  href={
+                    publicEmail
+                      ? `mailto:${encodeURIComponent(publicEmail).replace('%40', '@')}`
+                      : undefined
+                  }
+                />
                 {business.website && (
                   <InfoRow
                     symbol={{

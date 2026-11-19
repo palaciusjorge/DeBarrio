@@ -71,6 +71,18 @@ export default function SettingsScreen() {
                 <Text style={styles.secondaryButtonText}>Mi negocio</Text>
               </Pressable>
             ) : null}
+            {!profileLoading && profile && !business ? (
+              <Pressable
+                accessibilityRole="button"
+                onPress={() => router.push('/business/register')}
+                style={({ pressed }) => [
+                  styles.secondaryButton,
+                  pressed && styles.pressed,
+                ]}
+              >
+                <Text style={styles.secondaryButtonText}>Dar de alta mi comercio</Text>
+              </Pressable>
+            ) : null}
             {error ? (
               <Text accessibilityRole="alert" style={styles.error}>
                 {error}

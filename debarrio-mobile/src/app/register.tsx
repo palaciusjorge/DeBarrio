@@ -29,6 +29,7 @@ export default function RegisterScreen() {
   const [password, setPassword] = useState('');
   const [passwordConfirmation, setPasswordConfirmation] = useState('');
   const [status, setStatus] = useState<RegistrationStatus>('idle');
+  const [registerBusiness, setRegisterBusiness] = useState(false);
   const [loading, setLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
@@ -74,6 +75,7 @@ export default function RegisterScreen() {
           data: {
             name: trimmedName,
             surname: trimmedSurname,
+            ...(registerBusiness ? { registration_intent: 'business' } : {}),
           },
         },
       });
@@ -106,21 +108,35 @@ export default function RegisterScreen() {
           <Text style={styles.description}>
             {needsConfirmation
               ? 'Abre el enlace de confirmación que te hemos enviado. Después podrás iniciar sesión.'
-              : 'Tu cuenta se ha creado correctamente. Ya puedes disfrutar de DeBarrio.'}
+              : registerBusiness
+                ? 'Completa los datos de tu comercio para publicar su ficha.'
+                : 'Tu cuenta se ha creado correctamente. Ya puedes disfrutar de DeBarrio.'}
           </Text>
 
           <Pressable
             accessibilityRole="button"
-            onPress={() =>
-              router.replace(needsConfirmation ? '/login' : '/(tabs)')
-            }
+            onPress={() => {
+              if (needsConfirmation) {
+                router.replace(
+                  registerBusiness
+                    ? { pathname: '/login', params: { next: 'business' } }
+                    : '/login',
+                );
+              } else {
+                router.replace(registerBusiness ? '/business/register' : '/(tabs)');
+              }
+            }}
             style={({ pressed }) => [
               styles.primaryButton,
               pressed && styles.buttonPressed,
             ]}
           >
             <Text style={styles.primaryButtonText}>
-              {needsConfirmation ? 'Ir a iniciar sesión' : 'Continuar'}
+              {needsConfirmation
+                ? 'Ir a iniciar sesión'
+                : registerBusiness
+                  ? 'Continuar con el alta del comercio'
+                  : 'Continuar'}
             </Text>
           </Pressable>
         </View>
@@ -155,6 +171,27 @@ export default function RegisterScreen() {
           </Text>
 
           <View style={styles.form}>
+            <Text style={styles.label}>Tipo de cuenta</Text>
+            <View style={styles.accountChoices}>
+              <Pressable
+                accessibilityRole="radio"
+                accessibilityState={{ checked: !registerBusiness, disabled: loading }}
+                disabled={loading}
+                onPress={() => setRegisterBusiness(false)}
+                style={[styles.accountChoice, !registerBusiness && styles.accountChoiceSelected]}
+              >
+                <Text style={styles.accountChoiceLabel}>Personal</Text>
+              </Pressable>
+              <Pressable
+                accessibilityRole="radio"
+                accessibilityState={{ checked: registerBusiness, disabled: loading }}
+                disabled={loading}
+                onPress={() => setRegisterBusiness(true)}
+                style={[styles.accountChoice, registerBusiness && styles.accountChoiceSelected]}
+              >
+                <Text style={styles.accountChoiceLabel}>Comercio</Text>
+              </Pressable>
+            </View>
             <Text style={styles.label}>Nombre</Text>
             <TextInput
               autoCapitalize="words"
@@ -297,6 +334,29 @@ const styles = StyleSheet.create({
   form: {
     gap: 8,
     marginTop: 28,
+  },
+  accountChoices: {
+    flexDirection: 'row',
+    gap: 8,
+  },
+  accountChoice: {
+    alignItems: 'center',
+    backgroundColor: colors.surface,
+    borderColor: colors.border,
+    borderRadius: 12,
+    borderWidth: 1,
+    flex: 1,
+    justifyContent: 'center',
+    minHeight: 48,
+  },
+  accountChoiceSelected: {
+    backgroundColor: colors.selected,
+    borderColor: colors.primary,
+  },
+  accountChoiceLabel: {
+    color: colors.text,
+    fontSize: 15,
+    fontWeight: '700',
   },
   label: {
     color: colors.text,

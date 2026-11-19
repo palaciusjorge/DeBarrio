@@ -13,6 +13,7 @@ La base de datos utiliza **PostgreSQL** y **Supabase Auth** para la autenticaci�
 | `003_rls_policies.sql` | Configura permisos SQL, políticas Row Level Security (RLS) y triggers de seguridad. |
 | `004_restrict_user_profile_update.sql` | Limita las columnas de perfil que puede actualizar un usuario. |
 | `005_business_management_role_policies.sql` | Exige propiedad y rol `business` para gestionar datos privados del comercio. |
+| `006_self_service_business_registration.sql` | Permite que una cuenta autenticada dé de alta su propio comercio con una categoría y datos públicos opcionales. |
 
 ## Requisitos previos
 
@@ -29,6 +30,7 @@ En un proyecto Supabase nuevo, ejecutar los archivos desde el **SQL Editor**, en
 3. `003_rls_policies.sql`: activa RLS, concede los permisos mínimos necesarios y crea las políticas y triggers.
 4. `004_restrict_user_profile_update.sql`: restringe las columnas editables del perfil.
 5. `005_business_management_role_policies.sql`: limita la gestión privada al propietario cuyo perfil mantiene el rol `business`.
+6. `006_self_service_business_registration.sql`: activa el alta de comercios desde la aplicación.
 
 > **Importante:** `001_initial_schema.sql` está diseñado para una base de datos nueva. No debe ejecutarse sobre una base de datos que ya tenga estas tablas. El script de políticas puede volver a ejecutarse para aplicar o actualizar las políticas definidas en él.
 
@@ -65,12 +67,12 @@ Esto permite mostrar el catálogo sin exigir una sesión. La política pública 
 - Puede actualizar su propio perfil, pero no insertar perfiles directamente desde la aplicación.
 - Un trigger crea automáticamente el perfil en `public.users` al registrarse en Supabase Auth.
 - El rol inicial asignado por el trigger es `user`.
-- Un trigger impide que una sesión autenticada cambie el campo `role`. La promoción a rol `business` debe realizarse mediante un proceso administrativo o controlado, nunca confiando en un valor enviado libremente por el cliente.
+- Los roles de la API tienen bloqueada la edición directa de `role`. La función `register_own_business` asigna el rol al crear una ficha propia tras autenticar la cuenta. Los metadatos del registro solo determinan la navegación de la app.
 - Tras iniciar sesión, la app lee el perfil propio para obtener el rol y, si es `business`, busca un negocio asociado mediante `businesses.owner_id`. El acceso al panel desde Ajustes y la validación de la pantalla son controles de interfaz; no sustituyen las políticas RLS.
 
 ### Propiedad y gestión de negocios
 
-- Solo un usuario con rol `business` puede insertar un negocio y debe establecer `owner_id = auth.uid()`.
+- Las inserciones directas requieren el rol `business` y `owner_id = auth.uid()`. Para el alta inicial, `register_own_business` toma el propietario de la sesión y guarda la ficha, su categoría y el rol en una sola transacción.
 - Solo un propietario cuyo perfil mantenga el rol `business` puede actualizar o eliminar su negocio.
 - Los negocios se pueden leer públicamente; la lectura pública no concede permisos de modificación.
 
@@ -124,12 +126,12 @@ La existencia de las políticas no sustituye estas pruebas funcionales con los r
 
 Los negocios, productos y ofertas utilizados durante el desarrollo se mantienen separados de los datos iniciales de instalación, para evitar que información ficticia se confunda con datos reales.
 
-Para preparar una cuenta de comercio, regístrala en la app y comprueba que
-tiene un perfil en `public.users`. Desde el Dashboard de Supabase, cambia el
-rol de ese perfil a `business` y asigna su UUID como `owner_id` del comercio
-en `public.businesses`. Vincula el comercio a una categoría en
-`public.business_categories`. Al volver a iniciar sesión con esa cuenta,
-aparecerá **Ajustes → Mi negocio**.
+Con la migración `006` aplicada, elige **Comercio** al crear la cuenta o ve a
+**Ajustes → Dar de alta mi comercio** desde una cuenta existente. Introduce el
+nombre y la categoría. Puedes añadir el teléfono y el correo que quieras
+publicar en la ficha. Después encontrarás el panel en **Ajustes → Mi negocio**.
+Si el comercio ya está creado, su titular puede editar sus datos desde el
+panel. Las vinculaciones de fichas existentes se gestionan desde el Dashboard.
 
 Desde el panel, guarda un cambio de perfil con latitud y longitud válidas,
 y crea un producto y una oferta vigente. Comprueba desde una sesión
