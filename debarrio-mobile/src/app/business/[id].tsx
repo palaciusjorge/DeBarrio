@@ -11,7 +11,7 @@ import {
   View,
 } from 'react-native';
 import * as Linking from 'expo-linking';
-import { router, Stack, useLocalSearchParams } from 'expo-router';
+import { router, Stack, useIsFocused, useLocalSearchParams } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { SymbolView } from 'expo-symbols';
 import type { SymbolViewProps } from 'expo-symbols';
@@ -57,6 +57,7 @@ type Offer = {
 
 export default function BusinessDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
+  const isFocused = useIsFocused();
 
   const [business, setBusiness] = useState<Business | null>(null);
   const [categories, setCategories] = useState<Category[]>([]);
@@ -64,8 +65,11 @@ export default function BusinessDetailScreen() {
   const [offers, setOffers] = useState<Offer[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [reload, setReload] = useState(0);
 
   useEffect(() => {
+    if (!isFocused) return;
+
     let active = true;
 
     async function loadBusiness() {
@@ -170,7 +174,7 @@ export default function BusinessDetailScreen() {
     return () => {
       active = false;
     };
-  }, [id]);
+  }, [id, isFocused, reload]);
 
   return (
     <SafeAreaView edges={['bottom']} style={styles.safeArea}>
@@ -225,6 +229,12 @@ export default function BusinessDetailScreen() {
             <Text style={styles.muted}>
               {error ?? 'Inténtalo de nuevo más tarde.'}
             </Text>
+            <Pressable
+              accessibilityRole="button"
+              onPress={() => setReload((value) => value + 1)}
+            >
+              <Text style={styles.retryLabel}>Reintentar</Text>
+            </Pressable>
           </View>
         ) : (
           <>
@@ -504,6 +514,11 @@ function formatOfferDate(date: string | null, fallback: string) {
 }
 
 const styles = StyleSheet.create({
+  retryLabel: {
+    color: colors.primary,
+    fontWeight: '700',
+    paddingVertical: 8,
+  },
   backButton: {
     alignItems: 'center',
     flexDirection: 'row',

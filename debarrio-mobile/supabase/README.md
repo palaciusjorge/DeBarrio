@@ -55,7 +55,7 @@ Los roles `anon` y `authenticated` pueden consultar:
 - Todos los negocios registrados.
 - Las asociaciones entre negocios y categorías.
 - Solo los productos con `active = true`.
-- Solo las ofertas activas cuya fecha de inicio no haya llegado y cuya fecha de fin no haya pasado. Si una fecha es `NULL`, se interpreta como que no existe límite para ese extremo.
+- Solo las ofertas activas cuya fecha de inicio ya haya llegado y cuya fecha de fin siga vigente. Una fecha `NULL` indica que ese extremo no tiene límite.
 
 Esto permite mostrar el catálogo sin exigir una sesión. La política pública no permite consultar productos u ofertas inactivos.
 
@@ -106,12 +106,12 @@ Después de ejecutar `003_rls_policies.sql`, `004_restrict_user_profile_update.s
 
 ### Confirmación de correo en la aplicación
 
-El registro de la app envía como URL de retorno `debarrio://auth/callback` en
-builds de desarrollo y producción. Añade esa dirección a la lista **Redirect
-URLs** de Authentication en el Dashboard de Supabase y confirma que la
-confirmación de correo está habilitada. Si se prueba desde Expo Go, la URL de
-retorno generada para esa sesión de desarrollo también debe estar permitida;
-puede cambiar entre sesiones.
+Si la confirmación por correo está habilitada, el registro pide al usuario
+que abra el enlace enviado por Supabase. Añade `debarrio://auth/callback` a
+**Redirect URLs** en Authentication para los builds de desarrollo y
+producción. Para Expo Go o web, permite también la URL de retorno
+`/auth/callback` generada para ese entorno. Si el proyecto permite el alta
+sin confirmación, la app continúa con la sesión devuelta por Supabase.
 
 La pantalla `/auth/callback` intercambia el código o los tokens recibidos,
 activa la sesión y muestra el resultado. El trigger `on_auth_user_created`
@@ -123,6 +123,19 @@ La existencia de las políticas no sustituye estas pruebas funcionales con los r
 ## Datos de prueba
 
 Los negocios, productos y ofertas utilizados durante el desarrollo se mantienen separados de los datos iniciales de instalación, para evitar que información ficticia se confunda con datos reales.
+
+Para preparar una cuenta de comercio, regístrala en la app y comprueba que
+tiene un perfil en `public.users`. Desde el Dashboard de Supabase, cambia el
+rol de ese perfil a `business` y asigna su UUID como `owner_id` del comercio
+en `public.businesses`. Vincula el comercio a una categoría en
+`public.business_categories`. Al volver a iniciar sesión con esa cuenta,
+aparecerá **Ajustes → Mi negocio**.
+
+Desde el panel, guarda un cambio de perfil con latitud y longitud válidas,
+y crea un producto y una oferta vigente. Comprueba desde una sesión
+anónima o de usuario normal que la ficha y el mapa reflejan los cambios,
+y que el producto y la oferta desaparecen de la ficha tras desactivarlos
+desde la cuenta propietaria.
 
 ## Mantenimiento
 

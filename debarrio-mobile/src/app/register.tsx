@@ -11,13 +11,14 @@ import {
   View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { createURL } from 'expo-linking';
 import { router } from 'expo-router';
 
 import { colors } from '@/constants/theme';
 import { emailPattern } from '@/lib/auth/validation';
 import { supabase } from '@/lib/supabase/client';
 
-type RegistrationStatus = 'idle' | 'complete';
+type RegistrationStatus = 'idle' | 'confirm-email' | 'complete';
 
 const minimumPasswordLength = 8;
 
@@ -32,6 +33,8 @@ export default function RegisterScreen() {
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
   async function handleRegister() {
+    if (loading) return;
+
     setErrorMessage(null);
 
     const trimmedName = name.trim();
@@ -67,6 +70,7 @@ export default function RegisterScreen() {
         email: normalizedEmail,
         password,
         options: {
+          emailRedirectTo: createURL('auth/callback'),
           data: {
             name: trimmedName,
             surname: trimmedSurname,
@@ -76,13 +80,7 @@ export default function RegisterScreen() {
 
       if (error) throw error;
 
-      if (!data.session) {
-        throw new Error(
-          'La cuenta se ha creado, pero no se ha iniciado la sesión. Comprueba la configuración de confirmación de correo en Supabase.',
-        );
-      }
-
-      setStatus('complete');
+      setStatus(data.session ? 'complete' : 'confirm-email');
     } catch (error) {
       console.error('Error al registrar el usuario:', error);
       setErrorMessage(
@@ -96,24 +94,34 @@ export default function RegisterScreen() {
   }
 
   if (status !== 'idle') {
+    const needsConfirmation = status === 'confirm-email';
+
     return (
       <SafeAreaView style={styles.safeArea}>
         <View style={styles.resultContainer}>
-          <Text style={styles.title}>¡Cuenta creada!</Text>
+          <Text style={styles.title}>
+            {needsConfirmation ? 'Confirma tu correo' : '¡Cuenta creada!'}
+          </Text>
 
           <Text style={styles.description}>
-            Tu cuenta se ha creado correctamente. Ya puedes disfrutar de DeBarrio.
+            {needsConfirmation
+              ? 'Abre el enlace de confirmación que te hemos enviado. Después podrás iniciar sesión.'
+              : 'Tu cuenta se ha creado correctamente. Ya puedes disfrutar de DeBarrio.'}
           </Text>
 
           <Pressable
             accessibilityRole="button"
-            onPress={() => router.replace('/(tabs)')}
+            onPress={() =>
+              router.replace(needsConfirmation ? '/login' : '/(tabs)')
+            }
             style={({ pressed }) => [
               styles.primaryButton,
               pressed && styles.buttonPressed,
             ]}
           >
-            <Text style={styles.primaryButtonText}>Continuar</Text>
+            <Text style={styles.primaryButtonText}>
+              {needsConfirmation ? 'Ir a iniciar sesión' : 'Continuar'}
+            </Text>
           </Pressable>
         </View>
       </SafeAreaView>

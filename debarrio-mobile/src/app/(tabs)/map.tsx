@@ -9,7 +9,7 @@ import {
   View,
 } from 'react-native';
 import * as Location from 'expo-location';
-import { router } from 'expo-router';
+import { router, useIsFocused } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { BusinessMap } from '@/components/business-map';
@@ -18,6 +18,7 @@ import type {
   MappableBusiness,
 } from '@/components/business-map.types';
 import { colors } from '@/constants/theme';
+import { isValidLatitude, isValidLongitude } from '@/lib/coordinates';
 import { supabase } from '@/lib/supabase/client';
 
 type Business = {
@@ -35,22 +36,6 @@ type CurrentLocationResult = {
   location: Coordinate | null;
   canAskAgain: boolean;
 };
-
-function isValidCoordinate(
-  latitude: number | null,
-  longitude: number | null,
-): latitude is number {
-  return (
-    typeof latitude === 'number' &&
-    Number.isFinite(latitude) &&
-    latitude >= -90 &&
-    latitude <= 90 &&
-    typeof longitude === 'number' &&
-    Number.isFinite(longitude) &&
-    longitude >= -180 &&
-    longitude <= 180
-  );
-}
 
 function averageCoordinate(coordinates: Coordinate[]): Coordinate | null {
   if (coordinates.length === 0) return null;
@@ -95,7 +80,7 @@ async function getCurrentLocation(): Promise<CurrentLocationResult> {
   });
   const { latitude, longitude } = currentPosition.coords;
 
-  if (!isValidCoordinate(latitude, longitude)) {
+  if (!isValidLatitude(latitude) || !isValidLongitude(longitude)) {
     throw new Error('El dispositivo no ha devuelto una ubicación válida.');
   }
 
@@ -106,32 +91,17 @@ async function getCurrentLocation(): Promise<CurrentLocationResult> {
 }
 
 export default function MapScreen() {
+  const isFocused = useIsFocused();
   const [businesses, setBusinesses] = useState<Business[]>([]);
   const [businessesLoading, setBusinessesLoading] = useState(true);
   const [businessesError, setBusinessesError] = useState<string | null>(null);
+  const [reloadBusinesses, setReloadBusinesses] = useState(0);
   const [userLocation, setUserLocation] = useState<Coordinate | null>(null);
   const [locationStatus, setLocationStatus] =
     useState<LocationStatus>('loading');
   const [locationPermissionCanAskAgain, setLocationPermissionCanAskAgain] =
     useState(true);
   const [locationError, setLocationError] = useState<string | null>(null);
-
-  const loadBusinesses = useCallback(async () => {
-    setBusinessesLoading(true);
-    setBusinessesError(null);
-
-    try {
-      setBusinesses(await fetchBusinesses());
-    } catch (error) {
-      setBusinessesError(
-        error instanceof Error
-          ? error.message
-          : 'No se han podido cargar los comercios.',
-      );
-    } finally {
-      setBusinessesLoading(false);
-    }
-  }, []);
 
   const requestLocation = useCallback(async () => {
     setLocationStatus('loading');
@@ -184,9 +154,14 @@ export default function MapScreen() {
   }, [requestLocation]);
 
   useEffect(() => {
+    if (!isFocused) return;
+
     let active = true;
 
-    async function loadInitialBusinesses() {
+    async function loadBusinesses() {
+      setBusinessesLoading(true);
+      setBusinessesError(null);
+
       try {
         const data = await fetchBusinesses();
         if (active) {
@@ -206,11 +181,11 @@ export default function MapScreen() {
       }
     }
 
-    void loadInitialBusinesses();
+    void loadBusinesses();
     return () => {
       active = false;
     };
-  }, []);
+  }, [isFocused, reloadBusinesses]);
 
   useEffect(() => {
     let active = true;
@@ -252,21 +227,13 @@ export default function MapScreen() {
     () =>
       businesses.filter(
         (business): business is MappableBusiness =>
-          isValidCoordinate(business.latitude, business.longitude),
+          isValidLatitude(business.latitude) &&
+          isValidLongitude(business.longitude),
       ),
     [businesses],
   );
-  const laEsquina = locatedBusinesses.find(
-    (business) => business.name.trim().toLowerCase() === 'la esquina',
-  );
   const center =
     userLocation ??
-    (laEsquina
-      ? {
-          latitude: laEsquina.latitude,
-          longitude: laEsquina.longitude,
-        }
-      : null) ??
     averageCoordinate(
       locatedBusinesses.map(({ latitude, longitude }) => ({
         latitude,
@@ -339,7 +306,7 @@ export default function MapScreen() {
           </Text>
           <Pressable
             accessibilityRole="button"
-            onPress={() => void loadBusinesses()}
+            onPress={() => setReloadBusinesses((value) => value + 1)}
             style={styles.noticeAction}
           >
             <Text style={styles.noticeActionText}>Reintentar</Text>
