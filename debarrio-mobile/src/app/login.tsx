@@ -10,7 +10,7 @@ import {
   TextInput,
   View,
 } from 'react-native';
-import { router } from 'expo-router';
+import { router, useLocalSearchParams } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { colors } from '@/constants/theme';
@@ -32,6 +32,7 @@ function getLoginErrorMessage(error: unknown): string {
 }
 
 export default function LoginScreen() {
+  const { next } = useLocalSearchParams<{ next?: string }>();
   const { user, loading: authLoading, signInWithPassword } = useAuth();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -40,9 +41,9 @@ export default function LoginScreen() {
 
   useEffect(() => {
     if (!authLoading && user) {
-      router.replace('/(tabs)');
+      router.replace(next === 'business' ? '/business/register' : '/(tabs)');
     }
-  }, [authLoading, user]);
+  }, [authLoading, next, user]);
 
   async function handleSignIn() {
     if (loading) return;
@@ -65,7 +66,6 @@ export default function LoginScreen() {
 
     try {
       await signInWithPassword(normalizedEmail, password);
-      router.replace('/(tabs)');
     } catch (error) {
       console.error('Error al iniciar sesión:', error);
       setErrorMessage(getLoginErrorMessage(error));

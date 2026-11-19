@@ -48,6 +48,7 @@ type AuthContextValue = {
   profileLoading: boolean;
   profileError: string | null;
   initializationError: string | null;
+  reloadProfile: () => void;
   updateOwnedBusiness: (business: OwnedBusiness) => void;
   signInWithPassword: (email: string, password: string) => Promise<void>;
   signOut: () => Promise<void>;
@@ -63,6 +64,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
   const [session, setSession] = useState<Session | null>(null);
   const [loading, setLoading] = useState(true);
   const [profile, setProfile] = useState<UserProfile | null>(null);
+  const [profileRevision, setProfileRevision] = useState(0);
   const [business, setBusiness] = useState<OwnedBusiness | null>(null);
   const [profileLoading, setProfileLoading] = useState(false);
   const [profileError, setProfileError] = useState<string | null>(null);
@@ -228,7 +230,14 @@ export function AuthProvider({ children }: AuthProviderProps) {
     return () => {
       active = false;
     };
-  }, [session?.user.id]);
+  }, [session?.user.id, profileRevision]);
+
+  const reloadProfile = useCallback(() => {
+    if (!currentUserId.current) return;
+    setProfileLoading(true);
+    setProfileError(null);
+    setProfileRevision((revision) => revision + 1);
+  }, []);
 
   const updateOwnedBusiness = useCallback((updatedBusiness: OwnedBusiness) => {
     setBusiness((current) =>
@@ -268,6 +277,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
       profileLoading,
       profileError,
       initializationError,
+      reloadProfile,
       updateOwnedBusiness,
       signInWithPassword,
       signOut,
@@ -280,6 +290,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
       profileLoading,
       profileError,
       initializationError,
+      reloadProfile,
       updateOwnedBusiness,
       signInWithPassword,
       signOut,

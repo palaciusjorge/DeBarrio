@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 
 import { BusinessButton } from '@/components/business/BusinessButton';
@@ -10,6 +10,7 @@ import {
   type OwnedBusiness,
   useAuth,
 } from '@/contexts/AuthContext';
+import { emailPattern } from '@/lib/auth/validation';
 import { isValidLatitude, isValidLongitude } from '@/lib/coordinates';
 import { supabase } from '@/lib/supabase/client';
 
@@ -34,6 +35,10 @@ function BusinessProfileForm({ business }: { business: OwnedBusiness }) {
   const [postalCode, setPostalCode] = useState(business.postal_code ?? '');
   const [phone, setPhone] = useState(business.phone ?? '');
   const [email, setEmail] = useState(business.email ?? '');
+  const savedContact = useRef({
+    phone: optionalValue(business.phone ?? ''),
+    email: optionalValue(business.email ?? ''),
+  });
   const [website, setWebsite] = useState(business.website ?? '');
   const [latitude, setLatitude] = useState(String(business.latitude ?? ''));
   const [longitude, setLongitude] = useState(String(business.longitude ?? ''));
@@ -46,7 +51,10 @@ function BusinessProfileForm({ business }: { business: OwnedBusiness }) {
     setSaved(false);
 
     const normalizedName = name.trim();
-    const normalizedEmail = email.trim();
+    const publicPhone = optionalValue(phone);
+    const publicEmail = optionalValue(email);
+    const phoneChanged = publicPhone !== savedContact.current.phone;
+    const emailChanged = publicEmail !== savedContact.current.email;
     const coordinatesChanged =
       latitude.trim() !== String(business.latitude ?? '') ||
       longitude.trim() !== String(business.longitude ?? '');
@@ -58,11 +66,8 @@ function BusinessProfileForm({ business }: { business: OwnedBusiness }) {
       return;
     }
 
-    if (
-      normalizedEmail &&
-      !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(normalizedEmail)
-    ) {
-      setError('Introduce un correo electrónico válido.');
+    if (emailChanged && publicEmail && !emailPattern.test(publicEmail)) {
+      setError('Introduce un correo público válido.');
       return;
     }
 
@@ -89,8 +94,8 @@ function BusinessProfileForm({ business }: { business: OwnedBusiness }) {
           address: optionalValue(address),
           city: optionalValue(city),
           postal_code: optionalValue(postalCode),
-          phone: optionalValue(phone),
-          email: optionalValue(normalizedEmail),
+          ...(phoneChanged ? { phone: publicPhone } : {}),
+          ...(emailChanged ? { email: publicEmail } : {}),
           website: optionalValue(website),
           ...(coordinatesChanged
             ? { latitude: parsedLatitude, longitude: parsedLongitude }
@@ -107,6 +112,12 @@ function BusinessProfileForm({ business }: { business: OwnedBusiness }) {
       }
 
       updateOwnedBusiness(data);
+      savedContact.current = {
+        phone: optionalValue(data.phone ?? ''),
+        email: optionalValue(data.email ?? ''),
+      };
+      setPhone(data.phone ?? '');
+      setEmail(data.email ?? '');
       setLatitude(String(data.latitude ?? ''));
       setLongitude(String(data.longitude ?? ''));
       setSaved(true);
@@ -146,14 +157,16 @@ function BusinessProfileForm({ business }: { business: OwnedBusiness }) {
         value={postalCode}
       />
       <BusinessTextField
-        label="Teléfono"
+        editable={!saving}
+        label="Teléfono público"
         keyboardType="phone-pad"
         onChangeText={setPhone}
         value={phone}
       />
       <BusinessTextField
         autoCapitalize="none"
-        label="Correo electrónico"
+        editable={!saving}
+        label="Correo público"
         keyboardType="email-address"
         onChangeText={setEmail}
         value={email}
@@ -203,7 +216,7 @@ function BusinessProfileForm({ business }: { business: OwnedBusiness }) {
 export default function EditBusinessScreen() {
   return (
     <BusinessPrivateScreen title="Editar perfil del comercio">
-      {(business) => <BusinessProfileForm business={business} />}
+      {(business) => <BusinessProfileForm business={business} key={business.id} />}
     </BusinessPrivateScreen>
   );
 }

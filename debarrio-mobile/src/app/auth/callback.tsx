@@ -13,6 +13,7 @@ import { colors } from '@/constants/theme';
 import { supabase } from '@/lib/supabase/client';
 
 type CallbackState = 'loading' | 'success' | 'error';
+type Destination = '/(tabs)' | '/business/register';
 
 function getCallbackParameter(url: URL, key: string) {
   const queryValue = url.searchParams.get(key);
@@ -26,6 +27,7 @@ export default function AuthCallbackScreen() {
   const linkingUrl = useLinkingURL();
   const handledUrl = useRef<string | null>(null);
   const [state, setState] = useState<CallbackState>('loading');
+  const [destination, setDestination] = useState<Destination>('/(tabs)');
   const [message, setMessage] = useState('Verificando tu correo electrónico…');
 
   useEffect(() => {
@@ -46,9 +48,9 @@ export default function AuthCallbackScreen() {
         }
 
         const code = getCallbackParameter(url, 'code');
+        let result;
         if (code) {
-          const { error } = await supabase.auth.exchangeCodeForSession(code);
-          if (error) throw error;
+          result = await supabase.auth.exchangeCodeForSession(code);
         } else {
           const accessToken = getCallbackParameter(url, 'access_token');
           const refreshToken = getCallbackParameter(url, 'refresh_token');
@@ -59,13 +61,18 @@ export default function AuthCallbackScreen() {
             );
           }
 
-          const { error } = await supabase.auth.setSession({
+          result = await supabase.auth.setSession({
             access_token: accessToken,
             refresh_token: refreshToken,
           });
-          if (error) throw error;
         }
 
+        if (result.error) throw result.error;
+        setDestination(
+          result.data.session?.user.user_metadata.registration_intent === 'business'
+            ? '/business/register'
+            : '/(tabs)',
+        );
         setMessage('Correo confirmado. Tu cuenta ya está activa.');
         setState('success');
       } catch (error) {
@@ -97,7 +104,7 @@ export default function AuthCallbackScreen() {
         <Pressable
           accessibilityRole="button"
           onPress={() =>
-            router.replace(state === 'success' ? '/(tabs)' : '/register')
+            router.replace(state === 'success' ? destination : '/register')
           }
           style={({ pressed }) => [pressed && styles.pressed]}
         >
